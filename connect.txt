@@ -1,0 +1,43 @@
+Подключение компонентов
+Датчик HTU21D
+VCC -> 3.3V на ESP8266
+
+GND -> GND на ESP8266
+
+SDA -> D2 (GPIO4) на ESP8266
+
+SCL -> D1 (GPIO5) на ESP8266
+
+Экран Nokia 5110 (1) — для данных из интернета
+VCC -> 3.3V на ESP8266
+
+GND -> GND на ESP8266
+
+SCE -> D8 (GPIO15) на ESP8266
+
+RST -> D0 (GPIO16) на ESP8266
+
+DC -> D4 (GPIO2) на ESP8266
+
+DIN -> D7 (GPIO13) на ESP8266
+
+CLK -> D5 (GPIO14) на ESP8266
+
+LED -> 3.3V через резистор 220 Ом
+
+Экран Nokia 5110 (2) — для данных с датчика
+VCC -> 3.3V на ESP8266
+
+GND -> GND на ESP8266
+
+SCE -> D6 (GPIO12) на ESP8266
+
+RST -> D0 (GPIO16) на ESP8266 (можно использовать тот же RST)
+
+DC -> D3 (GPIO0) на ESP8266
+
+DIN -> D7 (GPIO13) на ESP8266 (можно использовать тот же DIN)
+
+CLK -> D5 (GPIO14) на ESP8266 (можно использовать тот же CLK)
+
+LED -> 3.3V через резистор 220 Ом 
