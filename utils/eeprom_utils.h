@@ -27,6 +27,7 @@ struct EEEPROM_keyCrc {
   bool valid() const { return crc() == _crc; };
   bool copyTo(char * dest) const {
     if ( dest && strncpy(dest, key, API_KEY_SIZE) ){
+      dest[API_KEY_SIZE] ='\0';
       return true;
     } else
     return false;
