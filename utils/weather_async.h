@@ -13,7 +13,7 @@
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 
-//#define POINT_STOP_WEATHER
+#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -32,7 +32,7 @@ extern unsigned long weatherUpdateInterval;
 extern SimpleTicker weatherTick;
 
 namespace Weather {
-
+    String getLang(GeoLocation::GeoData& location);
     // enum StateUpdate {
     //     Unknown,
     //     UpdateRunning,
@@ -108,14 +108,18 @@ namespace Weather {
                     configTime(Weather::data.timeZome, 0, NTP_SERVERS);
 
                     String _city = doc["name"].as<String>();
-                    strcpy(Weather::data.cityName, _city.c_str());
+                    if ( getLang(myLocation).isEmpty() )
+                        strcpy(Weather::data.cityName, _city.c_str());
+                    else
+                        strcpy(Weather::data.cityName, utf8rus(_city).c_str());
 
                     Serial.println("Weather data updated:");
-                    Serial.println("Description: " + doc["weather"][0]["main"].as<String>());
+                    Serial.println("Description: " + doc["weather"][0]["description"].as<String>());
                     Serial.println("Temperature: " + String(Weather::data.temp) + "C\nFeels like " + String(Weather::data.tempFeel) + "C");
                     Serial.println("Humidity: " + String(Weather::data.humidity) + "%");
                     Serial.println("Pressure: " + String(Weather::data.pressure) + "mmHg");
-                    Serial.printf("City name: '%s', tz=%d\n", data.cityName, data.timeZome);
+                    Serial.printf("City name: '%s', tz=%d\n", _city.c_str() /* data.cityName */, data.timeZome);
+                    Serial.printf("City len=%d\n", strlen(data.cityName));
                 } else {
                     updateState = AsyncRequest::WrongPayload;
                     Serial.println("Error: updated weather data");
@@ -137,36 +141,45 @@ namespace Weather {
         }
         code.toLowerCase();
         if ( code.equals("russia") || code.equals("ru")) return String("&lang=ru");
-        else if ( code.equals("usa") || code.equals("us")) return String("&lang=en");
-        else if ( code.equals("ukraine") || code.equals("ua"))return String("&lang=uk");
+        // else if ( code.equals("usa") || code.equals("us")) return String("&lang=en");
+        // else if ( code.equals("ukraine") || code.equals("ua"))return String("&lang=uk");
         else code.clear();
         return code;
     };
 
     AsyncRequest::Error updateData() {
+        pointStop(1, "Update. WiFi is %s\n", WiFi.isConnected() ? "connected" : "not connect");
         if (!WiFi.isConnected()) {
-            connectToWiFi();
-        }
-        if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
+//            connectToWiFi();
+            
+            reconnectWiFi();
+        
+            auto startReconnect = millis();
+            const unsigned long wait = 1000UL;
+            while ( !WiFi.isConnected() ){
+                if (millis() - startReconnect > wait ) return AsyncRequest::NoConnection;
+                delay(10);
+            }
+        } 
 
-         
         String requestUri(apiUrl);
 
         if (myLocation.valid()) {
             requestUri += "lat=";
             requestUri += myLocation.latitude;
             requestUri += "&lon=";
-            requestUri += myLocation.longitude;
-            requestUri += getLang(myLocation);
-            
+            requestUri += myLocation.longitude;  
         } else {
             requestUri += "q=";
             requestUri += myLocation.city;
             requestUri += ',';
             requestUri += myLocation.country;
         }
+        requestUri += getLang(myLocation);
         requestUri += "&units=metric&appid=";
         requestUri += apiKey;
+
+        pointStop(0, "Request is '%s'\n", requestUri.c_str());
 
         if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
             request.setDebug(false);
@@ -215,9 +228,9 @@ namespace Weather {
         display.setCursor(0, 1);
         display.setTextSize(1);
         if (data.cityName[0] != 0) {
-            Display::setFontSize(display, 1);
+            //Display::setFontSize(display, 1);
             display.print(data.cityName);
-            Display::setFontSize(display);
+            //Display::setFontSize(display);
         }
         else display.print(myLocation.city);
 

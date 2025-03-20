@@ -39,7 +39,6 @@
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/EEPROM",
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/ESP8266HTTPClient/src",
                 "/home/sergey/Arduino/libraries/Time",
-                "/home/sergey/Arduino/libraries/My",
                 "/home/sergey/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/xtensa-lx106-elf/include/c++/10.3.0",
                 "/home/sergey/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/xtensa-lx106-elf/include/c++/10.3.0/xtensa-lx106-elf",
                 "/home/sergey/.arduino15/packages/esp8266/tools/xtensa-lx106-elf-gcc/3.1.0-gcc10.3-e5f9fec/xtensa-lx106-elf/include/c++/10.3.0/backward",

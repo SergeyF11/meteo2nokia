@@ -56,8 +56,8 @@ namespace GeoLocation
         bool valid() { return (city[0] != '\0'); };
         size_t printTo(Print &p)
         {
-            size_t printed = p.printf("CountryCode: %s, City: %s, Lat:%f, Long:%f\nTimeZone:%s\n",
-                                      countryCode, city, latitude, longitude, timeZone);
+            size_t printed = p.printf("Country: %s, City: %s, Lat:%f, Long:%f\nTimeZone:%s\n",
+                                      country, city, latitude, longitude, timeZone);
             return printed;
         };
         
@@ -243,6 +243,7 @@ namespace GeoLocation
                 case GeoData::City:
                 {
                     String city = doc[fieldName].as<String>();
+
                     auto len = min(CitySize, city.length());
                     strncpy(data.city, city.c_str(), len);
                     data.city[len] = '\0';

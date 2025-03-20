@@ -12,7 +12,7 @@
 WiFiManager wm;
 WiFiManagerParameter openWeatherApiKey; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 
-//#define POINT_STOP_WIFI
+#define POINT_STOP_WIFI
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else
@@ -147,9 +147,15 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
   
   #define each( ms, func ) { static unsigned long startMs=millis(); if( millis()- startMs >=(ms)){ startMs=millis(); { func; } } }
 
- 
-  // hasValidApiKey
+  void reconnectWiFi(){
+    pointStop(0, "Reconnect\n");
+    WiFi.mode(WIFI_STA );
+    delay(10);
+    if ( WiFi.enableSTA(true) )
+      WiFi.begin();
+  };
 
+  // hasValidApiKey
   void connectToWiFi(Adafruit_PCD8544* display = nullptr ) {
     printDots(display, icon_wifi, 2);
     WiFi.mode(WIFI_STA );

@@ -10,17 +10,19 @@
 
 
 #define PRINT_COLOR BLACK
-#define CONTRAST 60
+#define CONTRAST1 57
+#define CONTRAST2 60
+
 #include "utils/weather_async.h" // _utils.h"
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
 // Настройки Wi-Fi
 // const char* ssid = "Your_SSID";
 // const char* password = "Your_PASSWORD";
-#define MY_CREDENTIAL
-#include <my.h>
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASS;
+// #define MY_CREDENTIAL
+// #include <my.h>
+// const char* ssid = WIFI_SSID;
+// const char* password = WIFI_PASS;
 
 // Настройки OpenWeatherMap
 // const String apiKey = OpenWeatherMap_API_Key;
@@ -40,7 +42,7 @@ tm* nowTm;
 #include "utils/tz_utils.h"
 
 
-#define hourToMs(hs) (1000L * 60 * 60 * hs  )
+#define  hourToMs(hs)  (1000UL * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
 unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // 30 минут для отладки
@@ -52,8 +54,6 @@ unsigned long lastWeatherUpdate = 0;
 struct SimpleTicker weatherTick(weatherUpdateInterval);
 struct SimpleTicker htuSensorTick( 60 SECUND );
 
-
-//HTU21D htu;
 
 // Создаем объекты для экранов Nokia 5110
 Adafruit_PCD8544 display2 = Adafruit_PCD8544(14, 13, 2, 12, 16); // CLK, DIN, DC, SCE, RST (экран 1)
@@ -128,20 +128,26 @@ void setup() {
   //HtuSensor::sensorData(display2, true, true );
   weatherTick.reset( -weatherUpdateInterval );
   //Serial.println("End begin"); delay(3000);
+  pointStop(1000, "End begin\n");
 }
 
 //bool weatherUpdated =false;
 void loop() {
   
   if ( weatherTick.tick() ){
-    //Weather::update(display1, true);
-    if ( Weather::updateData() == AsyncRequest::OK ){
+
+    Weather::update(display1, 1);
+    auto result = Weather::updateData();
+    if ( result != AsyncRequest::OK ){
+      pointStop(0, "Error request: %d\n", result );
+    // //Weather::update(display1, true);
+    // if ( Weather::updateData() == AsyncRequest::OK ){
     
-      //weatherUpdated = true;
-      //Weather::update(display1);
-      //TimeZone::configTime(myLocation.timeZone, NTP_SERVERS);
-    } else {
-      //weatherUpdated = false;
+    //   //weatherUpdated = true;
+    //   //Weather::update(display1);
+    //   //TimeZone::configTime(myLocation.timeZone, NTP_SERVERS);
+    // } else {
+    //   //weatherUpdated = false;
 
       // если даже нет местоположения, то это заставка wifi
       // рисуем точки
@@ -155,20 +161,23 @@ void loop() {
     case AsyncRequest::Unknown:
       break;
     case AsyncRequest::State::SuccessRespond:
-      WiFi.disconnect();
-      WiFi.mode(WIFI_OFF);
       Serial.println("WiFi disconnect and off");
+      WiFi.disconnect();
+      WiFi.mode(WIFI_OFF);      
       Weather::update(display1);
       Weather::updateState = AsyncRequest::State::Unknown;
       break;
-    case AsyncRequest::State::RespondWaiting:
-      Weather::update(display1, true);
-      Weather::updateState = AsyncRequest::State::Unknown;
-      break;
+    case AsyncRequest::State::FailRespond:
+    pointStop(0, "Wrong respond\n");
+    case AsyncRequest::State::WrongPayload:
+      if ( Weather::updateState != AsyncRequest::FailRespond ) 
+        pointStop(0, "Wrong respond\n");
+      weatherTick.reset( Weather::wrongUpdateInterval( 1 SECUND ) );
+      Weather::updateState = AsyncRequest::State::RespondWaiting;
+      // тут не нужен break !!!
     default:
-    //  case Weather::FailUpdate:
+    //  мигаем значком WIFI
       Weather::update(display1, nowTm->tm_sec == 0);
-      break;
   }
 
   
