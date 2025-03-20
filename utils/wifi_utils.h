@@ -151,6 +151,7 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
   // hasValidApiKey
 
   void connectToWiFi(Adafruit_PCD8544* display = nullptr ) {
+    printDots(display, icon_wifi, 2);
     WiFi.mode(WIFI_STA );
     CaptivePortal::init();
 
