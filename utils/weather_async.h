@@ -32,7 +32,7 @@ extern unsigned long weatherUpdateInterval;
 extern SimpleTicker weatherTick;
 
 namespace Weather {
-
+    String getLang(GeoLocation::GeoData& location);
     // enum StateUpdate {
     //     Unknown,
     //     UpdateRunning,
@@ -47,24 +47,24 @@ namespace Weather {
 
     const uint8_t* getIconByCode(const char* code) {
         // Сравниваем код и возвращаем указатель на соответствующую иконку
-        if (strcmp(code, "01d") == 0) return ::Icons::icon_0_1;
-        if (strcmp(code, "01n") == 0) return ::Icons::icon_2_2;
-        if (strcmp(code, "02d") == 0) return ::Icons::icon_0_2;
-        if (strcmp(code, "02n") == 0) return ::Icons::icon_0_3;
-        if (strcmp(code, "03d") == 0) return ::Icons::icon_0_0;
-        if (strcmp(code, "03n") == 0) return ::Icons::icon_0_0;
-        if (strcmp(code, "04d") == 0) return ::Icons::icon_0_0;
-        if (strcmp(code, "04n") == 0) return ::Icons::icon_0_0;
-        if (strcmp(code, "09d") == 0) return ::Icons::icon_1_1;
-        if (strcmp(code, "09n") == 0) return ::Icons::icon_1_1;
-        if (strcmp(code, "10d") == 0) return ::Icons::icon_0_4;
-        if (strcmp(code, "10n") == 0) return ::Icons::icon_1_4;
-        if (strcmp(code, "11d") == 0) return ::Icons::icon_1_0;
-        if (strcmp(code, "11n") == 0) return ::Icons::icon_1_0;
-        if (strcmp(code, "13d") == 0) return ::Icons::icon_1_2;
-        if (strcmp(code, "13n") == 0) return ::Icons::icon_1_2;
-        if (strcmp(code, "50d") == 0) return ::Icons::icon_2_1;
-        if (strcmp(code, "50n") == 0) return ::Icons::icon_2_1;
+        if (strcmp(code, "01d") == 0) return Icons::icon_0_1;
+        if (strcmp(code, "01n") == 0) return Icons::icon_2_2;
+        if (strcmp(code, "02d") == 0) return Icons::icon_0_2;
+        if (strcmp(code, "02n") == 0) return Icons::icon_0_3;
+        if (strcmp(code, "03d") == 0) return Icons::icon_0_0;
+        if (strcmp(code, "03n") == 0) return Icons::icon_0_0;
+        if (strcmp(code, "04d") == 0) return Icons::icon_0_0;
+        if (strcmp(code, "04n") == 0) return Icons::icon_0_0;
+        if (strcmp(code, "09d") == 0) return Icons::icon_1_1;
+        if (strcmp(code, "09n") == 0) return Icons::icon_1_1;
+        if (strcmp(code, "10d") == 0) return Icons::icon_0_4;
+        if (strcmp(code, "10n") == 0) return Icons::icon_1_4;
+        if (strcmp(code, "11d") == 0) return Icons::icon_1_0;
+        if (strcmp(code, "11n") == 0) return Icons::icon_1_0;
+        if (strcmp(code, "13d") == 0) return Icons::icon_1_2;
+        if (strcmp(code, "13n") == 0) return Icons::icon_1_2;
+        if (strcmp(code, "50d") == 0) return Icons::icon_2_1;
+        if (strcmp(code, "50n") == 0) return Icons::icon_2_1;
 
         // Если код не найден, возвращаем nullptr или иконку по умолчанию
         return nullptr;
@@ -108,14 +108,18 @@ namespace Weather {
                     configTime(Weather::data.timeZome, 0, NTP_SERVERS);
 
                     String _city = doc["name"].as<String>();
-                    strcpy(Weather::data.cityName, _city.c_str());
+                    //strcpy(Weather::data.cityName, _city.c_str());
+                    if ( getLang(myLocation).isEmpty() )
+                        strcpy(Weather::data.cityName, _city.c_str());
+                    else
+                        strcpy(Weather::data.cityName, utf8rus(_city).c_str());
 
                     Serial.println("Weather data updated:");
                     Serial.println("Description: " + doc["weather"][0]["main"].as<String>());
                     Serial.println("Temperature: " + String(Weather::data.temp) + "C\nFeels like " + String(Weather::data.tempFeel) + "C");
                     Serial.println("Humidity: " + String(Weather::data.humidity) + "%");
                     Serial.println("Pressure: " + String(Weather::data.pressure) + "mmHg");
-                    Serial.printf("City name: '%s', tz=%d\n", data.cityName, data.timeZome);
+                    Serial.printf("City name: '%s', tz=%d\n", _city.c_str(), data.timeZome);
                 } else {
                     updateState = AsyncRequest::WrongPayload;
                     Serial.println("Error: updated weather data");
@@ -142,19 +146,20 @@ namespace Weather {
         return code;
     };
 
+    bool waitConnection = false;
     AsyncRequest::Error updateData() {
-        if (!WiFi.isConnected()) {
-            WiFi.mode(WIFI_STA);
-            delay(50);
-            if( WiFi.begin()){
-                pointStop(0, "Wait connection...\n");
-                WiFi.waitForConnectResult(10000);
-            } else {
-                pointStop(0, "Can't to begin WiFi\n");
-            }
-            ///connectToWiFi();
-            //Reconnect::connect();
-        }
+        // if (!WiFi.isConnected()) {
+        //     WiFi.mode(WIFI_STA);
+        //     delay(50);
+        //     if( WiFi.begin()){
+        //         pointStop(0, "Wait connection...\n");
+        //         WiFi.waitForConnectResult(10000);
+        //     } else {
+        //         pointStop(0, "Can't to begin WiFi\n");
+        //     }
+        //     ///connectToWiFi();
+        //     //Reconnect::connect();
+        // }
         if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
 
          
@@ -224,9 +229,9 @@ namespace Weather {
         display.setCursor(0, 1);
         display.setTextSize(1);
         if (data.cityName[0] != 0) {
-            Display::setFontSize(display, 1);
+            //Display::setFontSize(display, 1);
             display.print(data.cityName);
-            Display::setFontSize(display);
+            //Display::setFontSize(display);
         }
         else display.print(myLocation.city);
 
@@ -267,4 +272,40 @@ namespace Weather {
         Weather::printData(display, data, true);
     };
 
+    void updateData(Adafruit_PCD8544& display){
+
+    switch ( updateState ){
+        case AsyncRequest::Unknown:
+          break;
+        
+          case AsyncRequest::WaitWiFiConnection:
+          if( WiFi.isConnected() ) {
+            waitConnection = false;
+            if( updateData() != AsyncRequest::OK ){
+              weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+            }
+          } else if ( Reconnect::waitTimeout() ) {
+              waitConnection = false;
+              weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+          } 
+          break;
+
+        case AsyncRequest::State::SuccessRespond:
+          WiFi.disconnect(true,false);
+          delay(1);
+          //WiFi.mode(WIFI_OFF);
+          Serial.println("WiFi disconnect and off");
+          update(display);
+          updateState = AsyncRequest::State::Unknown;
+          break;
+        case AsyncRequest::State::RespondWaiting:
+          update(display, true);
+          updateState = AsyncRequest::State::Unknown;
+          break;
+        default:
+        //  case Weather::FailUpdate:
+          update(display, nowTm->tm_sec == 0);
+          break;
+      }
+    };
 }; //namespace

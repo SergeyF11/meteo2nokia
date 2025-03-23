@@ -16,6 +16,7 @@ enum Error
     
 enum State {
     Unknown,
+    WaitWiFiConnection,
     RespondWaiting,
     SuccessRespond,
     WrongPayload,

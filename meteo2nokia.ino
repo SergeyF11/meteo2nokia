@@ -12,7 +12,7 @@
 #define PRINT_COLOR BLACK
 #define CONTRAST1 55
 #define CONTRAST2 60
-#include "utils/weather_async.h" // _utils.h"
+
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
 // Настройки Wi-Fi
@@ -28,11 +28,12 @@ const char* password = WIFI_PASS;
 // char apiKey[API_KEY_SIZE+1] = {0};
 // const String city = "Moscow";
 // const String country = "RU";
-const char timeZone[] = "GMT";
+//const char timeZone[] = "GMT";
 tm* nowTm;
 
 //const String units = "metric"; // Используйте "imperial" для Фаренгейта
-
+#define SECONDS *1000
+#include "utils/weather_async.h" 
 #include "utils/wifi_utils.h"
 #include "utils/geo_utils.h"
 #include "utils/sensor_utils.h"
@@ -44,14 +45,14 @@ tm* nowTm;
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
-unsigned long weatherUpdateInterval = hourToMs( 1/20 ); // 3 минут для отладки
+unsigned long weatherUpdateInterval = hourToMs( 1/6 ); // = 10 минут для отладки
 unsigned long lastWeatherUpdate = 0;
 
 #include "utils/ticker.h"
-#define SECUND *1000
+
 
 struct SimpleTicker weatherTick(weatherUpdateInterval);
-struct SimpleTicker htuSensorTick( 60 SECUND );
+struct SimpleTicker htuSensorTick( 60 SECONDS );
 
 
 //HTU21D htu;
@@ -75,7 +76,7 @@ void setup() {
   // Инициализация Serial для отладки
   Serial.begin(115200);
 
-  configTime( timeZone, NTP_SERVERS);
+  configTime( 0,0, NTP_SERVERS);
 
   
   // Инициализация экранов
@@ -126,51 +127,66 @@ void setup() {
       Serial.println( error );
   } 
 
-  //HtuSensor::sensorData(display2, true, true );
   weatherTick.reset( -weatherUpdateInterval );
-  //Serial.println("End begin"); delay(3000);
+
 }
 
-//bool weatherUpdated =false;
+
 void loop() {
   
   if ( weatherTick.tick() ){
-    //Weather::update(display1, true);
-    if ( Weather::updateData() == AsyncRequest::OK ){
-    
-      //weatherUpdated = true;
-      //Weather::update(display1);
-      //TimeZone::configTime(myLocation.timeZone, NTP_SERVERS);
+    if ( Reconnect::connect() ) {
+      //Weather::waitConnection = true;
+      Weather::updateState = AsyncRequest::WaitWiFiConnection;
     } else {
-      //weatherUpdated = false;
-
-      // если даже нет местоположения, то это заставка wifi
-      // рисуем точки
-      if ( ! myLocation.valid() ) printDots(display1); 
-      // повторить запрос через 5 секунд
-      weatherTick.reset( Weather::wrongUpdateInterval( 5 SECUND ) );
+      weatherTick.reset( Weather::wrongUpdateInterval( 5 SECONDS ) );
     }
   }
+  Weather::updateData(display1);
+  // if ( Weather::waitConnection ) { 
+  //   if( WiFi.isConnected() ) {
+  //     Weather::waitConnection = false;
+  //     if( Weather::updateData() != AsyncRequest::OK ){
+  //       weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
+  //     }
+  //   } else if ( Reconnect::waitTimeout() ) {
+  //       Weather::waitConnection = false;
+  //       weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
+  //   } 
+  // }
   
-  switch ( Weather::updateState ){
-    case AsyncRequest::Unknown:
-      break;
-    case AsyncRequest::State::SuccessRespond:
-      WiFi.disconnect();
-      //WiFi.mode(WIFI_OFF);
-      Serial.println("WiFi disconnect and off");
-      Weather::update(display1);
-      Weather::updateState = AsyncRequest::State::Unknown;
-      break;
-    case AsyncRequest::State::RespondWaiting:
-      Weather::update(display1, true);
-      Weather::updateState = AsyncRequest::State::Unknown;
-      break;
-    default:
-    //  case Weather::FailUpdate:
-      Weather::update(display1, nowTm->tm_sec == 0);
-      break;
-  }
+
+  // switch ( Weather::updateState ){
+  //   case AsyncRequest::WaitWiFiConnection:
+  //     if( WiFi.isConnected() ) {
+  //       Weather::waitConnection = false;
+  //       if( Weather::updateData() != AsyncRequest::OK ){
+  //         weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
+  //       }
+  //     } else if ( Reconnect::waitTimeout() ) {
+  //         Weather::waitConnection = false;
+  //         weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
+  //     } 
+  //     break;
+  //   case AsyncRequest::Unknown:
+  //     break;
+  //   case AsyncRequest::State::SuccessRespond:
+  //     WiFi.disconnect(true,false);
+  //     delay(1);
+  //     //WiFi.mode(WIFI_OFF);
+  //     Serial.println("WiFi disconnect and off");
+  //     Weather::update(display1);
+  //     Weather::updateState = AsyncRequest::State::Unknown;
+  //     break;
+  //   case AsyncRequest::State::RespondWaiting:
+  //     Weather::update(display1, true);
+  //     Weather::updateState = AsyncRequest::State::Unknown;
+  //     break;
+  //   default:
+  //   //  case Weather::FailUpdate:
+  //     Weather::update(display1, nowTm->tm_sec == 0);
+  //     break;
+  // }
 
   
   if( TimeUtils::printTo( display2 ) ){
