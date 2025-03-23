@@ -156,8 +156,8 @@ void loop() {
     case AsyncRequest::Unknown:
       break;
     case AsyncRequest::State::SuccessRespond:
-      WiFi.disconnect();
-      WiFi.mode(WIFI_OFF);
+      WiFi.disconnect(true);
+      //WiFi.mode(WIFI_OFF);
       Serial.println("WiFi disconnect and off");
       Weather::update(display1);
       Weather::updateState = AsyncRequest::State::Unknown;

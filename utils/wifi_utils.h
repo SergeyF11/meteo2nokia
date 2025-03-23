@@ -13,7 +13,7 @@
 WiFiManager wm;
 WiFiManagerParameter openWeatherApiKey; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 
-//#define POINT_STOP_WIFI
+#define POINT_STOP_WIFI
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else
@@ -159,38 +159,73 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
       IPAddress _localIP;
       IPAddress _gateway;
       IPAddress _subnet;
-      unsigned long start;
+      //unsigned long start;
     };
 // Параметры соединения (хранятся только в оперативной памяти)
-    static Data data;
+  static Data data;  
+
+    size_t bssidPrintTo(Print& p){
+      size_t out= p.print("bssid=");
+      for( int i = 0; i<6; i++){
+        if ( i ) out += p.print(':');
+        out += p.print(data._bssid[i]);
+      }
+      return out;
+    };
+  
+    size_t printTo(Print& p){
+      size_t out = p.printf("Save parameters:\nName='%s', psk='%s'\n" \
+        "channel=%u, ", data.name, data.psk );
+      out += bssidPrintTo(p);
+      out += p.print(", IP="); out += p.print(data._localIP);
+      out += p.print(", gw="); out += p.print(data._gateway);
+      out += p.print(", mask="); out += p.print(data._subnet);
+      return out;
+    };
     static bool needResave = false;
-    void save( /*const String& name, const String& psk /*const uint8_t ch, const uint8_t* bssid, 
+    void save( const String& name = "", const String& psk="" /*const uint8_t ch, const uint8_t* bssid, 
       const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/)
     {
-      strcpy(data.name,  WiFi.SSID().c_str());
-      strcpy(data.psk, WiFi.psk().c_str());
+      if ( !name.isEmpty() ) strcpy(data.name, name.c_str());
+      if ( !psk.isEmpty() ) strcpy(data.psk, psk.c_str());
       data._channel = WiFi.channel();
       memcpy(data._bssid, WiFi.BSSID(), 6); // Сохраняем BSSID
       data._localIP = WiFi.localIP();
       data._gateway = WiFi.gatewayIP();
       data._subnet = WiFi.subnetMask();
+      printTo(Serial);
     }
     bool connect(unsigned long timeout = 10000UL){
-      data.start = millis();
-      WiFi.config(data._localIP, data._gateway, data._subnet);
-      WiFi.begin(data.name, data.psk, data._channel, data._bssid );
-      while(  WiFi.status() != WL_CONNECTED && millis() - data.start <= timeout){
-        if ( millis()- data.start > 3000UL ){
-          needResave = true;
-          WiFi.begin(data.name, data.psk);
-        }
+      WiFi.mode(WIFI_STA );
+      static unsigned long start;
+      pointStop(0, "Start\n");
+      start = millis();
+      //WiFi.config(data._localIP, data._gateway, data._subnet);
+      //pointStop(0, "Configured.\n");
+      //WiFi.begin(data.name, data.psk, data._channel, data._bssid );
+      WiFi.begin(data.name, data.psk);
+      pointStop(0, "Begin...\n");
+      while(  WiFi.status() != WL_CONNECTED && millis() - start <= timeout){
+        delay(0);
+        // if ( millis()- start > 3000UL && !needResave ){
+        //   pointStop(0, "Try to reconnect without saved params\n");
+        //   needResave = true;
+        //   WiFi.begin(data.name, data.psk);
+        //}
 //        each(500, printDots(display, icon_wifi, 2));        
       }
       
       // pointStop(0, "Key is %s and WiFi is %s\n", 
       //   hasValidApiKey ? "valid" : "invalid",
       //   WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
-      if ( needResave ) save();
+      if ( WiFi.isConnected() ){
+        if ( needResave ) { 
+          pointStop(0, "Connected with new parameters");
+          save();
+        } else {
+          pointStop(0, "Connected with saved parameters");
+        }
+      }
       return WiFi.status() == WL_CONNECTED;
     }
     
@@ -203,7 +238,7 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
 
     if( wm.autoConnect("WEatherSTation") && hasValidApiKey ){ //}, "atheration")){
       Serial.println("connected...");
-      Reconnect::save();
+      
     } else {
       //needExitConfigPortal = false;
       if ( ! wm.getConfigPortalActive() && !hasValidApiKey ){
@@ -223,6 +258,6 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
         hasValidApiKey ? "valid" : "invalid",
         WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
     }
-  
+    if( WiFi.isConnected() ) Reconnect::save(WiFi.SSID(),  WiFi.psk());
   }
   

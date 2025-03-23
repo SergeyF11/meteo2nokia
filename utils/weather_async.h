@@ -145,8 +145,12 @@ namespace Weather {
 
     AsyncRequest::Error updateData() {
         if (!WiFi.isConnected()) {
+            WiFi.mode(WIFI_STA);
+            if( WiFi.reconnect()){
+                WiFi.waitForConnectResult(10000);
+            }
             ///connectToWiFi();
-            Reconnect::connect();
+            //Reconnect::connect();
         }
         if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
 
