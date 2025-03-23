@@ -2,6 +2,7 @@
 
 #define NTP_SERVERS "ntp1.stratum2.ru" , "ru.pool.ntp.org", "pool.ntp.org"
 
+//#include <WiFi.h>
 #include <WiFiManager.h>
 #include <ESP8266WiFi.h>
 #include <Adafruit_GFX.h>
@@ -149,6 +150,51 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
 
  
   // hasValidApiKey
+  namespace Reconnect {
+    struct Data {        
+      char name[64] = {0};
+      char psk[64] = {0};  
+      uint8_t _channel;
+      uint8_t _bssid[6]; // MAC-адрес точки доступа
+      IPAddress _localIP;
+      IPAddress _gateway;
+      IPAddress _subnet;
+      unsigned long start;
+    };
+// Параметры соединения (хранятся только в оперативной памяти)
+    static Data data;
+    static bool needResave = false;
+    void save( /*const String& name, const String& psk /*const uint8_t ch, const uint8_t* bssid, 
+      const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/)
+    {
+      strcpy(data.name,  WiFi.SSID().c_str());
+      strcpy(data.psk, WiFi.psk().c_str());
+      data._channel = WiFi.channel();
+      memcpy(data._bssid, WiFi.BSSID(), 6); // Сохраняем BSSID
+      data._localIP = WiFi.localIP();
+      data._gateway = WiFi.gatewayIP();
+      data._subnet = WiFi.subnetMask();
+    }
+    bool connect(unsigned long timeout = 10000UL){
+      data.start = millis();
+      WiFi.config(data._localIP, data._gateway, data._subnet);
+      WiFi.begin(data.name, data.psk, data._channel, data._bssid );
+      while(  WiFi.status() != WL_CONNECTED && millis() - data.start <= timeout){
+        if ( millis()- data.start > 3000UL ){
+          needResave = true;
+          WiFi.begin(data.name, data.psk);
+        }
+//        each(500, printDots(display, icon_wifi, 2));        
+      }
+      
+      // pointStop(0, "Key is %s and WiFi is %s\n", 
+      //   hasValidApiKey ? "valid" : "invalid",
+      //   WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
+      if ( needResave ) save();
+      return WiFi.status() == WL_CONNECTED;
+    }
+    
+  };
 
   void connectToWiFi(Adafruit_PCD8544* display = nullptr ) {
     printDots(display, icon_wifi, 2);
@@ -157,6 +203,7 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
 
     if( wm.autoConnect("WEatherSTation") && hasValidApiKey ){ //}, "atheration")){
       Serial.println("connected...");
+      Reconnect::save();
     } else {
       //needExitConfigPortal = false;
       if ( ! wm.getConfigPortalActive() && !hasValidApiKey ){

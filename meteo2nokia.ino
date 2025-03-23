@@ -10,7 +10,8 @@
 
 
 #define PRINT_COLOR BLACK
-#define CONTRAST 60
+#define CONTRAST1 57
+#define CONTRAST2 60
 #include "utils/weather_async.h" // _utils.h"
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
@@ -43,7 +44,7 @@ tm* nowTm;
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
-unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // 30 минут для отладки
+unsigned long weatherUpdateInterval = hourToMs( 1/20 ); // 3 минут для отладки
 unsigned long lastWeatherUpdate = 0;
 
 #include "utils/ticker.h"

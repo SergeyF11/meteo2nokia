@@ -145,7 +145,8 @@ namespace Weather {
 
     AsyncRequest::Error updateData() {
         if (!WiFi.isConnected()) {
-            connectToWiFi();
+            ///connectToWiFi();
+            Reconnect::connect();
         }
         if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
 

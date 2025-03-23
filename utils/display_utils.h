@@ -49,13 +49,13 @@ namespace TestChars {
 namespace displays {
 void init(){
     display1.begin();
-    display1.setContrast(CONTRAST); // Установка контраста (0-127)
+    display1.setContrast(CONTRAST1); // Установка контраста (0-127)
     display1.clearDisplay();
 
     display1.display();
   
     display2.begin();
-    display2.setContrast(CONTRAST); // Установка контраста (0-127)
+    display2.setContrast(CONTRAST2); // Установка контраста (0-127)
     display2.clearDisplay();
     display2.setTextSize(1);
     display2.setFont(&FreeMonoBold6pt8b);
