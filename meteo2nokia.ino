@@ -10,7 +10,7 @@
 
 
 #define PRINT_COLOR BLACK
-#define CONTRAST1 57
+#define CONTRAST1 55
 #define CONTRAST2 60
 #include "utils/weather_async.h" // _utils.h"
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
@@ -156,7 +156,7 @@ void loop() {
     case AsyncRequest::Unknown:
       break;
     case AsyncRequest::State::SuccessRespond:
-      WiFi.disconnect(true);
+      WiFi.disconnect();
       //WiFi.mode(WIFI_OFF);
       Serial.println("WiFi disconnect and off");
       Weather::update(display1);

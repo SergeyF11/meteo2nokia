@@ -13,7 +13,7 @@
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 
-//#define POINT_STOP_WEATHER
+#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -137,8 +137,7 @@ namespace Weather {
         }
         code.toLowerCase();
         if ( code.equals("russia") || code.equals("ru")) return String("&lang=ru");
-        else if ( code.equals("usa") || code.equals("us")) return String("&lang=en");
-        else if ( code.equals("ukraine") || code.equals("ua"))return String("&lang=uk");
+
         else code.clear();
         return code;
     };
@@ -146,8 +145,12 @@ namespace Weather {
     AsyncRequest::Error updateData() {
         if (!WiFi.isConnected()) {
             WiFi.mode(WIFI_STA);
-            if( WiFi.reconnect()){
+            delay(50);
+            if( WiFi.begin()){
+                pointStop(0, "Wait connection...\n");
                 WiFi.waitForConnectResult(10000);
+            } else {
+                pointStop(0, "Can't to begin WiFi\n");
             }
             ///connectToWiFi();
             //Reconnect::connect();
@@ -172,6 +175,7 @@ namespace Weather {
         }
         requestUri += "&units=metric&appid=";
         requestUri += apiKey;
+        pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
         if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
             request.setDebug(false);
