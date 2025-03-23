@@ -135,41 +135,62 @@ void setup() {
 void loop() {
   
   if ( weatherTick.tick() ){
+
     //Weather::update(display1, true);
-    if ( Weather::updateData() == AsyncRequest::OK ){
+    // if ( Weather::updateData() == AsyncRequest::OK ){
     
-      //weatherUpdated = true;
-      //Weather::update(display1);
-      //TimeZone::configTime(myLocation.timeZone, NTP_SERVERS);
-    } else {
+    //   //weatherUpdated = true;
+    //   //Weather::update(display1);
+    //   //TimeZone::configTime(myLocation.timeZone, NTP_SERVERS);
+    // } else {
       //weatherUpdated = false;
 
       // если даже нет местоположения, то это заставка wifi
       // рисуем точки
-      if ( ! myLocation.valid() ) printDots(display1); 
-      // повторить запрос через 5 секунд
-      weatherTick.reset( Weather::wrongUpdateInterval( 5 SECUND ) );
-    }
+      if ( ! Weather::tryUpdateData() ){
+        weatherTick.reset( Weather::wrongUpdateInterval( 5 SECUND ) );
+      }
+      Serial.print("State:"); Serial.println(Weather::updateState);
+
+      // if ( Weather::updateData() != AsyncRequest::OK ){
+      //   if ( ! myLocation.valid() ) printDots(display1); 
+      //   else { /* flashWiFi(display1); */}
+      //   // повторить запрос через 5 секунд
+      //   weatherTick.reset( Weather::wrongUpdateInterval( 5 SECUND ) );
+      
+      // }
+    //}
   }
+  
   
   switch ( Weather::updateState ){
     case AsyncRequest::Unknown:
       break;
+    case AsyncRequest::ConnectionWaiting:
+      
+      Weather::update(display1, nowTm->tm_sec == 0);
+      Weather::updateData();
+      break;
+    case AsyncRequest::State::FailRespond:
+    case AsyncRequest::State::WrongPayload:
+      weatherTick.reset( Weather::wrongUpdateInterval( 30 SECUND ) );
+    // не нужен break;
     case AsyncRequest::State::SuccessRespond:
-      WiFi.disconnect();
+      WiFi.disconnect(true, false);
       //WiFi.mode(WIFI_OFF);
       Serial.println("WiFi disconnect and off");
       Weather::update(display1);
       Weather::updateState = AsyncRequest::State::Unknown;
       break;
+    
     case AsyncRequest::State::RespondWaiting:
-      Weather::update(display1, true);
-      Weather::updateState = AsyncRequest::State::Unknown;
+      //если даже нет местоположения, то это заставка wifi
+      if ( ! myLocation.valid() ) printDots(display1); 
+      else { 
+        Weather::update(display1, nowTm->tm_sec == 0);
+      }
       break;
-    default:
-    //  case Weather::FailUpdate:
-      Weather::update(display1, nowTm->tm_sec == 0);
-      break;
+      
   }
 
   

@@ -6,6 +6,7 @@ namespace AsyncRequest {
 enum Error
 {
     OK,
+    WaitConnection,
     NoConnection,
     SendedAlready,
     WrongRequest,
@@ -16,6 +17,7 @@ enum Error
     
 enum State {
     Unknown,
+    ConnectionWaiting,
     RespondWaiting,
     SuccessRespond,
     WrongPayload,

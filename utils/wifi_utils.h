@@ -163,6 +163,10 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
     };
 // Параметры соединения (хранятся только в оперативной памяти)
   static Data data;  
+  static unsigned long start;
+  static bool needResave = false;
+  static unsigned long timeout= 3000UL;
+    bool inline waitTimeout(){ return (millis() - start > timeout); };
 
     size_t bssidPrintTo(Print& p){
       size_t out= p.print("bssid=");
@@ -182,7 +186,7 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
       out += p.print(", mask="); out += p.print(data._subnet);
       return out;
     };
-    static bool needResave = false;
+    
     void save( const String& name = "", const String& psk="" /*const uint8_t ch, const uint8_t* bssid, 
       const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/)
     {
@@ -195,16 +199,21 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
       data._subnet = WiFi.subnetMask();
       printTo(Serial);
     }
-    bool connect(unsigned long timeout = 10000UL){
-      WiFi.mode(WIFI_STA );
-      static unsigned long start;
+    bool connect(unsigned long _timeout = 0){
+      if ( WiFi.isConnected() ) return true;
+      if ( ! WiFi.mode(WIFI_STA ) ) return false;
+      if ( _timeout ) timeout = _timeout;
+
       pointStop(0, "Start\n");
       start = millis();
-      //WiFi.config(data._localIP, data._gateway, data._subnet);
+      return (
+      WiFi.config(data._localIP, data._gateway, data._subnet) &&
       //pointStop(0, "Configured.\n");
-      //WiFi.begin(data.name, data.psk, data._channel, data._bssid );
-      WiFi.begin(data.name, data.psk);
-      pointStop(0, "Begin...\n");
+      WiFi.begin(data.name, data.psk, data._channel, data._bssid ) );
+/*      if( WiFi.begin(data.name, data.psk) ){
+
+      }
+       pointStop(0, "Begin...\n");
       while(  WiFi.status() != WL_CONNECTED && millis() - start <= timeout){
         delay(0);
         // if ( millis()- start > 3000UL && !needResave ){
@@ -226,7 +235,7 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
           pointStop(0, "Connected with saved parameters");
         }
       }
-      return WiFi.status() == WL_CONNECTED;
+      return WiFi.status() == WL_CONNECTED; */
     }
     
   };

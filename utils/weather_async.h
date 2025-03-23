@@ -142,52 +142,83 @@ namespace Weather {
         return code;
     };
 
+    // bool tryUpdateData(){
+    //     if (!WiFi.isConnected() && ! Reconnect::connect() ) return false;
+    //     updateData();
+    // };
+    AsyncRequest::Error updateData();
+    static unsigned long startUpdate;
+    bool tryUpdateData(){
+        static bool updateStarted = false;
+        if (!WiFi.isConnected() && ! Reconnect::connect() ) return false;
+        if ( WiFi.isConnected() && !updateStarted ) {
+            startUpdate = millis();
+            updateData();
+        }
+        if( updateStarted && Reconnect::waitTimeout() )
+            return true;
+        else return false;
+    };
+
     AsyncRequest::Error updateData() {
-        if (!WiFi.isConnected()) {
-            WiFi.mode(WIFI_STA);
-            delay(50);
-            if( WiFi.begin()){
-                pointStop(0, "Wait connection...\n");
-                WiFi.waitForConnectResult(10000);
-            } else {
-                pointStop(0, "Can't to begin WiFi\n");
-            }
-            ///connectToWiFi();
-            //Reconnect::connect();
-        }
-        if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
-
-         
-        String requestUri(apiUrl);
-
-        if (myLocation.valid()) {
-            requestUri += "lat=";
-            requestUri += myLocation.latitude;
-            requestUri += "&lon=";
-            requestUri += myLocation.longitude;
-            requestUri += getLang(myLocation);
+        
+        //if ( ! Reconnect::connect() ) return AsyncRequest::Error::NoConnection;
+        //  {
+        //     // WiFi.mode(WIFI_STA);
+        //     // delay(1);
+        //     // if( WiFi.begin()){
+        //     //     pointStop(0, "Wait connection...\n");
+        //     //     WiFi.waitForConnectResult(10000);
+        //     // } else {
+        //     //     pointStop(0, "Can't to begin WiFi\n");
+        //     // }
+        //     ///connectToWiFi();
+        //     if (! Reconnect::connect() ) return AsyncRequest::Error::NoConnection;
             
-        } else {
-            requestUri += "q=";
-            requestUri += myLocation.city;
-            requestUri += ',';
-            requestUri += myLocation.country;
+        // }
+        if( !WiFi.isConnected() ) {
+            if ( updateState != AsyncRequest::ConnectionWaiting) 
+                pointStop(0, "Wait connection...\n");
+            updateState = AsyncRequest::ConnectionWaiting;
+            return AsyncRequest::Error::WaitConnection;
         }
-        requestUri += "&units=metric&appid=";
-        requestUri += apiKey;
-        pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
         if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
             request.setDebug(false);
             request.onReadyStateChange(onRequestComplete);
+
+            String requestUri(apiUrl);
+
+            if (myLocation.valid()) {
+                requestUri += "lat=";
+                requestUri += myLocation.latitude;
+                requestUri += "&lon=";
+                requestUri += myLocation.longitude;
+                requestUri += getLang(myLocation);
+                
+            } else {
+                requestUri += "q=";
+                requestUri += myLocation.city;
+                requestUri += ',';
+                requestUri += myLocation.country;
+            }
+            requestUri += "&units=metric&appid=";
+            requestUri += apiKey;
+            
             request.open("GET", requestUri.c_str());
             if ( request.send() ) {
+                pointStop(0,"Request:\n%s\n", requestUri.c_str());
                 updateState = AsyncRequest::RespondWaiting;
                 return AsyncRequest::OK;
             }
-            else return AsyncRequest::Error::WrongRequest;;
+            else {
+                pointStop(0,"Wrong Request:\n%s\n", requestUri.c_str());
+                updateState = AsyncRequest::State::FailRespond;
+                return AsyncRequest::Error::WrongRequest;
+            }
         }
-
+        if ( updateState != AsyncRequest::SendedAlready) 
+            pointStop(0, "Waiting respode...\n");
         return AsyncRequest::SendedAlready;
     }
 
