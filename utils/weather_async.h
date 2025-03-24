@@ -13,7 +13,7 @@
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 
-#define POINT_STOP_WEATHER
+//#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -267,7 +267,7 @@ namespace Weather {
 
     void printWifiOn(Adafruit_PCD8544& display) {
         display.setCursor(0, 0);
-        Display::printRightAdjast(display, String(char(0xae)));
+        Display::printRightAdjast(display, String(char(0xAD))); // антенна
     };
 
     void update(Adafruit_PCD8544& display, bool wifi = false) {
@@ -291,14 +291,18 @@ namespace Weather {
               weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
               //waitConnection = true;
               updateState = AsyncRequest::State::FailRespond;
+              Serial.println("Fail responde");
+              break;
             }
           } else if ( Reconnect::waitTimeout() ) {
               waitConnection = false;
               weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+              updateState = AsyncRequest::State::FailRespond;
           } 
           //if ( waitConnection)
             break;
 
+        case AsyncRequest::State::FailRespond:
         case AsyncRequest::State::SuccessRespond:
           WiFi.disconnect(true,false);
           delay(1);
@@ -308,8 +312,8 @@ namespace Weather {
           updateState = AsyncRequest::State::Unknown;
           break;
         case AsyncRequest::State::RespondWaiting:
-          //update(display, true);
-          updateState = AsyncRequest::State::Unknown;
+          update(display, true);
+          //updateState = AsyncRequest::State::Unknown;
           break;
         default:
         //  case Weather::FailUpdate:

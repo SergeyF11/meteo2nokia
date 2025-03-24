@@ -14,7 +14,7 @@ WiFiManager wm;
 WiFiManagerParameter openWeatherApiKey; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 WiFiManagerParameter geolocationApiKey; 
 
-#define POINT_STOP_WIFI
+//#define POINT_STOP_WIFI
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else

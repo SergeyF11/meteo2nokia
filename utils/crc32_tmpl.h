@@ -55,7 +55,7 @@ namespace {
 /// @note data.crc = calculateCRC32(data, offsetof(MyStruct, crc), sizeof(data.crc));
 template <typename T>
 uint32_t calculate(const T& data, size_t excludeOffset = 0) {
-    Serial.printf("Start with address:%x end offset=%x\n", &data, excludeOffset);
+    //Serial.printf("Start with address:%x end offset=%x\n", &data, excludeOffset);
     
     const uint8_t* byteArray = reinterpret_cast<const uint8_t*>(&data);
     size_t length = sizeof(T);

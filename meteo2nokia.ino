@@ -45,7 +45,7 @@ tm* nowTm;
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
-unsigned long weatherUpdateInterval = hourToMs( 1/6 ); // = 10 минут для отладки
+unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
 unsigned long lastWeatherUpdate = 0;
 
 #include "utils/ticker.h"
