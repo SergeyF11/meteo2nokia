@@ -9,8 +9,8 @@
 
 //extern WiFiManager geolocationApiKey;
 
-#define MY_CREDENTIAL
-#include <my.h>
+// #define MY_CREDENTIAL
+// #include <my.h>
 
 #define POINT_STOP_GEO
 #ifdef POINT_STOP_GEO

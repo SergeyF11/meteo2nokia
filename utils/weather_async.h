@@ -296,7 +296,7 @@ namespace Weather {
               waitConnection = false;
               weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
           } 
-          if ( waitConnection)
+          //if ( waitConnection)
             break;
 
         case AsyncRequest::State::SuccessRespond:

@@ -163,37 +163,37 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
       //unsigned long start;
     };
 // Параметры соединения (хранятся только в оперативной памяти)
-  static Data data;  
+  static Data saved;  
 
     size_t bssidPrintTo(Print& p){
       size_t out= p.print("bssid=");
       for( int i = 0; i<6; i++){
         if ( i ) out += p.print(':');
-        out += p.print(data._bssid[i]);
+        out += p.print(saved._bssid[i]);
       }
       return out;
     };
   
     size_t printTo(Print& p){
       size_t out = p.printf("Save parameters:\nName='%s', psk='%s'\n" \
-        "channel=%u, ", data.name, data.psk );
+        "channel=%u, ", saved.name, saved.psk );
       out += bssidPrintTo(p);
-      out += p.print(", IP="); out += p.print(data._localIP);
-      out += p.print(", gw="); out += p.print(data._gateway);
-      out += p.print(", mask="); out += p.println(data._subnet);
+      out += p.print(", IP="); out += p.print(saved._localIP);
+      out += p.print(", gw="); out += p.print(saved._gateway);
+      out += p.print(", mask="); out += p.println(saved._subnet);
       return out;
     };
     static bool needResave = false;
     void save( const String& name = "", const String& psk="" /*const uint8_t ch, const uint8_t* bssid, 
       const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/)
     {
-      if ( !name.isEmpty() ) strcpy(data.name, name.c_str());
-      if ( !psk.isEmpty() ) strcpy(data.psk, psk.c_str());
-      data._channel = WiFi.channel();
-      memcpy(data._bssid, WiFi.BSSID(), 6); // Сохраняем BSSID
-      data._localIP = WiFi.localIP();
-      data._gateway = WiFi.gatewayIP();
-      data._subnet = WiFi.subnetMask();
+      if ( !name.isEmpty() ) strcpy(saved.name, name.c_str());
+      if ( !psk.isEmpty() ) strcpy(saved.psk, psk.c_str());
+      saved._channel = WiFi.channel();
+      memcpy(saved._bssid, WiFi.BSSID(), 6); // Сохраняем BSSID
+      saved._localIP = WiFi.localIP();
+      saved._gateway = WiFi.gatewayIP();
+      saved._subnet = WiFi.subnetMask();
       printTo(Serial);
     };
 
@@ -210,8 +210,8 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
       pointStop(0, "Start\n");
       start = millis();
       return (
-        WiFi.config(data._localIP, data._gateway, data._subnet) &&
-        WiFi.begin(data.name, data.psk, data._channel, data._bssid ) 
+        WiFi.config(saved._localIP, saved._gateway, saved._subnet) &&
+        WiFi.begin(saved.name, saved.psk, saved._channel, saved._bssid ) 
       );
     };
     
@@ -220,9 +220,13 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
   #define SKIP_INIT true
   void connectToWiFi(Adafruit_PCD8544* display = nullptr , bool skipInit=false) {
     printDots(display, icon_wifi, 2);
+    if ( ! WiFi.isConnected() ) { 
+      Reconnect::connect();
+      while( !WiFi.isConnected() && ! Reconnect::waitTimeout() ){
+        delay (10);
+      }    
+    }
     if ( !skipInit){
-    
-      WiFi.mode(WIFI_STA );
       CaptivePortal::init();
     }
 
