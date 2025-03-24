@@ -12,6 +12,7 @@
 
 WiFiManager wm;
 WiFiManagerParameter openWeatherApiKey; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
+WiFiManagerParameter geolocationApiKey; 
 
 #define POINT_STOP_WIFI
 #ifdef POINT_STOP_WIFI
@@ -26,26 +27,32 @@ extern const char timeZone[];
 extern WiFiManager wm;
 const unsigned long connectionTime = 10000UL; 
 //extern char * apiKey;
-char apiKey[API_KEY_SIZE+1] = {0};
+char openWeatherApiKeyStr[API_KEY_SIZE+1] = {0};
+char geolocationApiKeyStr[API_KEY_SIZE+1] = {0};
 volatile bool hasValidApiKey = false;
 
 
-extern WiFiManagerParameter openWeatherApiKey;
+//extern WiFiManagerParameter openWeatherApiKey;
 
 namespace CaptivePortal {
-    static const char name[] PROGMEM= "WEatherSTation";
+    static const char name[] /* PROGMEM */= "WEatherSTation";
 
     void saveParamsCallback () {
-    EEEPROM_keyCrc apiKey( openWeatherApiKey.getValue() );
-    if ( apiKey.valid() ){
-      Serial.println("Get Params:");
-      Serial.print(openWeatherApiKey.getID());
-      Serial.print(" : ");
-      Serial.println(apiKey.get());
-      hasValidApiKey = saveApiKey(apiKey );
+    EepromData apiKeys( openWeatherApiKey.getValue(), geolocationApiKey.getValue() );
+
+    if ( apiKeys.valid() ){
+      // Serial.printf("Get params: %s:%s, %s", openWeatherApiKey.getID(), apiKeys.getWeatherKey(), 
+      //   strlen(geolocationApiKey.getValue()) == 0 ? "" : String(geolocationApiKey.getID()) +":" + apiKeys.getGeoKey());
+      apiKeys.printTo(Serial);
+      // Serial.println("Get Params:");
+      // Serial.print(openWeatherApiKey.getID());
+      // Serial.print(" : ");
+      // Serial.println(apiKeys.getWeatherKey());
+      hasValidApiKey = saveApiKeys(apiKeys );
       if ( hasValidApiKey ) {
-        apiKey.copyTo( ::apiKey );
-        pointStop(0,"ApiKey saved. %s\n", apiKey);
+        apiKeys.copyWeatherKeyTo( ::openWeatherApiKeyStr );
+        apiKeys.copyGeoKeyTo( ::geolocationApiKeyStr );
+        pointStop(0,"ApiKey saved.\n");
       }
     // need save to EEPROM
     } else {
@@ -55,20 +62,33 @@ namespace CaptivePortal {
         strlen(openWeatherApiKey.getValue()), 
         openWeatherApiKey.getValue() );
       Serial.printf( "Len %d, value '%s', %s", 
-        strlen( apiKey.get() ), 
-        apiKey.get(), apiKey.valid() ? "valid" : "invalid" );
+        strlen( apiKeys.getWeatherKey() ), 
+        apiKeys.getWeatherKey(), apiKeys.valid() ? "valid" : "invalid" );
     }
   };
 
   inline void init(){
     wm.setHostname(name);
     wm.setConfigPortalBlocking(false);
-    hasValidApiKey = loadApiKey( apiKey );
+    pointStop(100,"LoadKeys\n");
+
+    hasValidApiKey = loadApiKeys( openWeatherApiKeyStr, geolocationApiKeyStr );
+    if ( !hasValidApiKey ) {
+      openWeatherApiKeyStr[0] = '\0';
+      geolocationApiKeyStr[0] = '\0';
+    } 
     new (&openWeatherApiKey ) WiFiManagerParameter(
-      "apiKey", "OpenWeather API key", 
-      apiKey, API_KEY_SIZE+1, 
+      "weatherKey", "OpenWeather API key", 
+      openWeatherApiKeyStr, API_KEY_SIZE+1, 
       "placeholder=\"visit OpenWeather.com for get your Api key\"" );
     wm.addParameter(&openWeatherApiKey);
+
+    new (&geolocationApiKey ) WiFiManagerParameter(
+      "geoKey", "geolocation.io API key", 
+      geolocationApiKeyStr, API_KEY_SIZE+1, 
+      "placeholder=\"optional, for greater accuracy visit geolocation.io for get your Api key\"" );
+    wm.addParameter(&geolocationApiKey);
+
     wm.setSaveParamsCallback(saveParamsCallback); 
     wm.setConfigPortalTimeout(180);
   };
@@ -197,23 +217,26 @@ void inline printDots(Adafruit_PCD8544* display, const byte* icon = icon_wifi, c
     
   }; //namespace Reconnect
 
-  void connectToWiFi(Adafruit_PCD8544* display = nullptr ) {
+  #define SKIP_INIT true
+  void connectToWiFi(Adafruit_PCD8544* display = nullptr , bool skipInit=false) {
     printDots(display, icon_wifi, 2);
-    WiFi.mode(WIFI_STA );
-    CaptivePortal::init();
+    if ( !skipInit){
+    
+      WiFi.mode(WIFI_STA );
+      CaptivePortal::init();
+    }
 
-    if( wm.autoConnect(CaptivePortal::name) && hasValidApiKey ){ //}, "atheration")){
-      Serial.println("connected...");
-      
+    if(  wm.autoConnect(CaptivePortal::name) && hasValidApiKey ){ //}, "atheration")){
+      Serial.println("connected..."); 
     } else {
-      //needExitConfigPortal = false;
-      if ( ! wm.getConfigPortalActive() && !hasValidApiKey ){
-        wm.startConfigPortal(CaptivePortal::name);
-      }
+      //needExitConfigPortal = false; 
       Serial.println("Config portal running");
       
       while( !hasValidApiKey || WiFi.status() != WL_CONNECTED ){
-
+        if ( ! wm.getConfigPortalActive()  ){
+          Serial.println("Retart portal for wrong data");
+          wm.startConfigPortal(CaptivePortal::name);
+        }
         if ( wm.process() ){
           pointStop(0, "Status changed\n");
         }

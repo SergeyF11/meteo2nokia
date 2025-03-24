@@ -70,7 +70,7 @@ void printData(Adafruit_PCD8544& display, bool clear=false){
       display.setCursor(0, 0);
       display.setTextSize(2);
       display.setTextColor(PRINT_COLOR);
-      display.println("Indoor:");
+      display.println(" --:--");
     }
 
     //display.setTextSize(2);
@@ -107,6 +107,7 @@ void printData(Adafruit_PCD8544& display, bool clear=false){
     }
     // домик
     display.setCursor(0, yPos+8);
+    //display.setFont();
     display.setTextSize(3);
     display.print( char(0x7f));
     display.display();

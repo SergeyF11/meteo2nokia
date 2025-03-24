@@ -21,6 +21,7 @@ namespace {
     uint32_t _calculate(const uint8_t* byteArray, size_t length, size_t excludeOffset = 0) {
         uint32_t crc = 0xFFFFFFFF;
         size_t excludeSize = ( excludeOffset == 0 ) ? 0 : sizeof(uint32_t);
+
         for (size_t i = 0; i < length; i++) {
             if (i >= excludeOffset && i < excludeOffset + excludeSize) {
                 continue; // Пропуск исключаемых байтов
@@ -54,6 +55,8 @@ namespace {
 /// @note data.crc = calculateCRC32(data, offsetof(MyStruct, crc), sizeof(data.crc));
 template <typename T>
 uint32_t calculate(const T& data, size_t excludeOffset = 0) {
+    Serial.printf("Start with address:%x end offset=%x\n", &data, excludeOffset);
+    
     const uint8_t* byteArray = reinterpret_cast<const uint8_t*>(&data);
     size_t length = sizeof(T);
     return _calculate(byteArray, length, excludeOffset);

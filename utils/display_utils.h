@@ -89,7 +89,7 @@ namespace TestChars {
         delayMs = _delay;
     };
     void run(Adafruit_PCD8544& display, uint8_t size=1, const char start=0, const char finish=255){
-        constexpr int fullScreen1=(84/6) * (48/8); 
+        constexpr int fullScreen1=(84/6) * (48/8); //символов на экран
         int fullScreen = fullScreen1/(size*2);
         display.setTextSize(size);
         auto i = start;
@@ -97,7 +97,7 @@ namespace TestChars {
             int charsOnScreen=0;
             display.clearDisplay();         
             display.setCursor(0,0);   
-            while( charsOnScreen <= fullScreen){
+            while( charsOnScreen < fullScreen){
                 display.print(i);
                 charsOnScreen++;
                 Serial.print( int(i),HEX), Serial.print(", " );

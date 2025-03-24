@@ -81,7 +81,7 @@ namespace Weather {
 
     static Data data;
 
-    const char apiUrl[] PROGMEM = "http://api.openweathermap.org/data/2.5/weather?";
+    const char apiUrl[] PROGMEM = "https://api.openweathermap.org/data/2.5/weather?";
 
     AsyncHTTPRequest request;
 
@@ -92,10 +92,6 @@ namespace Weather {
                 if ( request->respHeaderExists("Date")){
                     TimeUtils::setGMTTime( request->respHeaderValue("Date"));
                     pointStop(0, "Set time %s\n", request->respHeaderValue("Date") );
-                }
-                if ( request->respHeaderExists("date")){
-                    TimeUtils::setGMTTime( request->respHeaderValue("date"));
-                    pointStop(0, "Set time %s\n", request->respHeaderValue("date") );
                 }
                 String payload = request->responseText();
 
@@ -186,11 +182,11 @@ namespace Weather {
             requestUri += myLocation.country;
         }
         requestUri += "&units=metric&appid=";
-        requestUri += apiKey;
+        requestUri += openWeatherApiKeyStr;
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
         if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
-            request.setDebug(false);
+            request.setDebug(true);
             request.onReadyStateChange(onRequestComplete);
             request.open("GET", requestUri.c_str());
             if ( request.send() ) {
@@ -264,12 +260,14 @@ namespace Weather {
     };
 
     unsigned long wrongUpdateInterval(unsigned int renewMs) {
-        return millis() - weatherUpdateInterval + renewMs;
+        auto newSet = millis() - (weatherUpdateInterval - renewMs);
+        pointStop(0,"current=%lu, new set=%lu\n", millis(), newSet);
+        return newSet;
     };
 
     void printWifiOn(Adafruit_PCD8544& display) {
         display.setCursor(0, 0);
-        Display::printRightAdjast(display, String(char(0x24)));
+        Display::printRightAdjast(display, String(char(0xae)));
     };
 
     void update(Adafruit_PCD8544& display, bool wifi = false) {
@@ -286,16 +284,19 @@ namespace Weather {
           break;
         
           case AsyncRequest::WaitWiFiConnection:
+          update(display, true);
           if( WiFi.isConnected() ) {
             waitConnection = false;
-            if( updateData() != AsyncRequest::OK ){
-              weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+            if( updateData() != AsyncRequest::Error::OK ){
+              weatherTick.reset( wrongUpdateInterval( 1 SECONDS ) );
+              waitConnection = true;
             }
           } else if ( Reconnect::waitTimeout() ) {
               waitConnection = false;
               weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
           } 
-          break;
+          if ( waitConnection)
+            break;
 
         case AsyncRequest::State::SuccessRespond:
           WiFi.disconnect(true,false);
@@ -306,12 +307,12 @@ namespace Weather {
           updateState = AsyncRequest::State::Unknown;
           break;
         case AsyncRequest::State::RespondWaiting:
-          update(display, true);
+          //update(display, true);
           updateState = AsyncRequest::State::Unknown;
           break;
         default:
         //  case Weather::FailUpdate:
-          update(display, nowTm->tm_sec == 0);
+          update(display, true); //nowTm->tm_sec == 0);
           break;
       }
     };

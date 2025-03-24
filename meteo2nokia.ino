@@ -82,7 +82,7 @@ void setup() {
   // Инициализация экранов
   displays::init();
 
-  TestChars::setDelay(300);
+  TestChars::setDelay(1000);
   TestChars::run(display1, 2);
 
 
@@ -113,19 +113,21 @@ void setup() {
   // Подключение к Wi-Fi
   connectToWiFi(&display1);
 
-
-  auto error = GeoLocation::getLocation( myLocation, &display1 );
-  switch( error ){
-    case AsyncRequest::OK:
-      //myLocation.printTo(Serial);
-      //TimeZone::configTime( myLocation.timeZone, NTP_SERVERS);
-      display1.clearDisplay();
-      display1.display();
-      break;
-    default:
-      Serial.print("Error get location: ");
-      Serial.println( error );
-  } 
+  bool validLocation = false;
+  while( ! validLocation ){
+    auto error = GeoLocation::getLocation( myLocation, &display1 );
+    switch( error ){
+      case AsyncRequest::OK:
+        validLocation = true;
+        display1.clearDisplay();
+        display1.display();
+        break;
+      default:
+        Serial.print("Error get location: ");
+        hasValidApiKey = false;
+        connectToWiFi(&display1, SKIP_INIT);
+    } 
+  }
 
 
   weatherTick.reset( -weatherUpdateInterval );

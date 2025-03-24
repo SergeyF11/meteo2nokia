@@ -7,6 +7,8 @@
 #include "wifi_utils.h"
 
 
+//extern WiFiManager geolocationApiKey;
+
 #define MY_CREDENTIAL
 #include <my.h>
 
@@ -487,18 +489,19 @@ namespace GeoLocation
 
     namespace Key {
         //bool has(){ return true; };
-        #ifdef APP_IPGEOLOCATION_IO_KEY
-        #pragma message ("USING IpGeolocationIO key")
-        const char * get(){ return APP_IPGEOLOCATION_IO_KEY; };
-        #else
-        const char * get(){ return nullptr; };
-        #endif
+    // #ifdef APP_IPGEOLOCATION_IO_KEY
+    // #pragma message ("USING IpGeolocationIO key")
+    // const char * get(){ return APP_IPGEOLOCATION_IO_KEY; };
+    // #else
+    // const char * get(){ return nullptr; };
+    // #endif
+        inline const char * get() { return geolocationApiKeyStr; };
         // const char _key[] PROGMEM = APP_IPGEOLOCATION_IO_KEY; 
         // #else
         // const char * _key = nullptr; 
         // #endif
         // const char * get(){ return _key; };
-         bool has(){ return ( get() && get()[0] != 0); };
+        inline bool has(){ return ( get() && get()[0] != 0); };
     };
     
 
