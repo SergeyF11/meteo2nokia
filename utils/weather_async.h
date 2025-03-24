@@ -81,7 +81,7 @@ namespace Weather {
 
     static Data data;
 
-    const char apiUrl[] PROGMEM = "https://api.openweathermap.org/data/2.5/weather?";
+    const char apiUrl[] PROGMEM = "http://api.openweathermap.org/data/2.5/weather?";
 
     AsyncHTTPRequest request;
 
@@ -283,13 +283,14 @@ namespace Weather {
         case AsyncRequest::Unknown:
           break;
         
-          case AsyncRequest::WaitWiFiConnection:
+        case AsyncRequest::WaitWiFiConnection:
           update(display, true);
           if( WiFi.isConnected() ) {
             waitConnection = false;
             if( updateData() != AsyncRequest::Error::OK ){
-              weatherTick.reset( wrongUpdateInterval( 1 SECONDS ) );
-              waitConnection = true;
+              weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
+              //waitConnection = true;
+              updateState = AsyncRequest::State::FailRespond;
             }
           } else if ( Reconnect::waitTimeout() ) {
               waitConnection = false;
