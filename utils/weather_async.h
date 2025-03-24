@@ -73,7 +73,7 @@ namespace Weather {
     struct Data {
         char iconCode[16] = {0};
         char cityName[128] = {0};
-        int timeZome = 0;
+        int timeZone = 0;
         float temp = 0, tempFeel = 0;
         float humidity = 0;
         int pressure;
@@ -89,7 +89,14 @@ namespace Weather {
         if (readyState == readyStateDone) {
             if (request->responseHTTPcode() == 200) {
                 updateState = AsyncRequest::SuccessRespond;
-
+                if ( request->respHeaderExists("Date")){
+                    TimeUtils::setGMTTime( request->respHeaderValue("Date"));
+                    pointStop(0, "Set time %s\n", request->respHeaderValue("Date") );
+                }
+                if ( request->respHeaderExists("date")){
+                    TimeUtils::setGMTTime( request->respHeaderValue("date"));
+                    pointStop(0, "Set time %s\n", request->respHeaderValue("date") );
+                }
                 String payload = request->responseText();
 
                 JsonDocument doc;
@@ -104,8 +111,8 @@ namespace Weather {
                     Weather::data.tempFeel = doc["main"]["feels_like"].as<float>();
                     Weather::data.humidity = doc["main"]["humidity"].as<float>();
                     Weather::data.pressure = hPa2MmHg(doc["main"]["pressure"].as<float>());
-                    Weather::data.timeZome = doc["timezone"].as<int>();
-                    configTime(Weather::data.timeZome, 0, NTP_SERVERS);
+                    Weather::data.timeZone = doc["timezone"].as<int>();
+                    configTime(Weather::data.timeZone, 0, NTP_SERVERS);
 
                     String _city = doc["name"].as<String>();
                     //strcpy(Weather::data.cityName, _city.c_str());
@@ -119,7 +126,7 @@ namespace Weather {
                     Serial.println("Temperature: " + String(Weather::data.temp) + "C\nFeels like " + String(Weather::data.tempFeel) + "C");
                     Serial.println("Humidity: " + String(Weather::data.humidity) + "%");
                     Serial.println("Pressure: " + String(Weather::data.pressure) + "mmHg");
-                    Serial.printf("City name: '%s', tz=%d\n", _city.c_str(), data.timeZome);
+                    Serial.printf("City name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
                 } else {
                     updateState = AsyncRequest::WrongPayload;
                     Serial.println("Error: updated weather data");
@@ -167,9 +174,9 @@ namespace Weather {
 
         if (myLocation.valid()) {
             requestUri += "lat=";
-            requestUri += myLocation.latitude;
+            requestUri += String(myLocation.latitude, 5);
             requestUri += "&lon=";
-            requestUri += myLocation.longitude;
+            requestUri += String(myLocation.longitude, 5);
             requestUri += getLang(myLocation);
             
         } else {

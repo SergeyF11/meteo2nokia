@@ -18,10 +18,10 @@
 // Настройки Wi-Fi
 // const char* ssid = "Your_SSID";
 // const char* password = "Your_PASSWORD";
-#define MY_CREDENTIAL
-#include <my.h>
-const char* ssid = WIFI_SSID;
-const char* password = WIFI_PASS;
+// #define MY_CREDENTIAL
+// #include <my.h>
+// const char* ssid = WIFI_SSID;
+// const char* password = WIFI_PASS;
 
 // Настройки OpenWeatherMap
 // const String apiKey = OpenWeatherMap_API_Key;
@@ -82,8 +82,8 @@ void setup() {
   // Инициализация экранов
   displays::init();
 
-  // TestChars::setDelay(3000);
-  // TestChars::run(display1, 2);
+  TestChars::setDelay(300);
+  TestChars::run(display1, 2);
 
 
   Wire.begin(SDA, SCL);
@@ -127,6 +127,7 @@ void setup() {
       Serial.println( error );
   } 
 
+
   weatherTick.reset( -weatherUpdateInterval );
 
 }
@@ -143,67 +144,15 @@ void loop() {
     }
   }
   Weather::updateData(display1);
-  // if ( Weather::waitConnection ) { 
-  //   if( WiFi.isConnected() ) {
-  //     Weather::waitConnection = false;
-  //     if( Weather::updateData() != AsyncRequest::OK ){
-  //       weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
-  //     }
-  //   } else if ( Reconnect::waitTimeout() ) {
-  //       Weather::waitConnection = false;
-  //       weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
-  //   } 
-  // }
   
-
-  // switch ( Weather::updateState ){
-  //   case AsyncRequest::WaitWiFiConnection:
-  //     if( WiFi.isConnected() ) {
-  //       Weather::waitConnection = false;
-  //       if( Weather::updateData() != AsyncRequest::OK ){
-  //         weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
-  //       }
-  //     } else if ( Reconnect::waitTimeout() ) {
-  //         Weather::waitConnection = false;
-  //         weatherTick.reset( Weather::wrongUpdateInterval( 60 SECONDS ) );
-  //     } 
-  //     break;
-  //   case AsyncRequest::Unknown:
-  //     break;
-  //   case AsyncRequest::State::SuccessRespond:
-  //     WiFi.disconnect(true,false);
-  //     delay(1);
-  //     //WiFi.mode(WIFI_OFF);
-  //     Serial.println("WiFi disconnect and off");
-  //     Weather::update(display1);
-  //     Weather::updateState = AsyncRequest::State::Unknown;
-  //     break;
-  //   case AsyncRequest::State::RespondWaiting:
-  //     Weather::update(display1, true);
-  //     Weather::updateState = AsyncRequest::State::Unknown;
-  //     break;
-  //   default:
-  //   //  case Weather::FailUpdate:
-  //     Weather::update(display1, nowTm->tm_sec == 0);
-  //     break;
-  // }
-
   
   if( TimeUtils::printTo( display2 ) ){
-      //HtuSensor::tick(display2);
+
       if ( htuSensorTick.tick()) {
         HtuSensor::updateData();
       }
       HtuSensor::printData(display2);
   }
     
-  // if ( WiFi.isConnected() && 
-  //     TimeUtils::isSynced() && 
-  //     weatherUpdated ){
-      
-  //     WiFi.disconnect();
-  //     WiFi.mode(WIFI_OFF);
-  //     Serial.println("WiFi disconnect and off");
-  //   }
   
 }
