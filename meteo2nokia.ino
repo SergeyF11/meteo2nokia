@@ -1,4 +1,4 @@
-
+#include "utils/rtc_utils.h"
 
 #include <Wire.h>
 #include <Adafruit_HTU21DF.h> // Используем библиотеку Adafruit HTU21D
@@ -12,6 +12,9 @@
 #define PRINT_COLOR BLACK
 #define CONTRAST1 55
 #define CONTRAST2 60
+// Глобальные переменные для хранения контраста
+uint8_t displayContrast1 = 50;
+uint8_t displayContrast2 = 50;
 
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
@@ -69,21 +72,21 @@ String weatherDescription = "";
 float weatherTemp = 0, weatherTempFeel = 0;
 float weatherHumidity = 0;
 //bool wifiSleep = false;
-
+//bool tripleReset;
 
 void setup() {
-  
+
   // Инициализация Serial для отладки
   Serial.begin(115200);
 
   configTime( 0,0, NTP_SERVERS);
-
   
   // Инициализация экранов
   displays::init();
-
-  TestChars::setDelay(1000);
-  TestChars::run(display1, 2);
+  
+  //tripleReset = MultyReset::check();
+  // TestChars::setDelay(1000);
+  // TestChars::run(display1, 2);
 
 
   Wire.begin(SDA, SCL);
@@ -109,9 +112,18 @@ void setup() {
 
 
   //testPrintDots(display1, 50);
+  EepromData loadedData;
+  hasValidApiKey = loadEepromData( loadedData  );  //loadApiKeys( openWeatherApiKeyStr, geolocationApiKeyStr );
+  
+  if ( !hasValidApiKey ) {
+    openWeatherApiKeyStr[0] = '\0';
+    geolocationApiKeyStr[0] = '\0';
+  }
+  displays::setContrast(loadedData.getContrast1(), loadedData.getContrast2());
+  CaptivePortal::init(loadedData);
 
   // Подключение к Wi-Fi
-  connectToWiFi(&display1);
+  connectToWiFi(&display1, SKIP_INIT);
 
   bool validLocation = false;
   while( ! validLocation ){
@@ -129,7 +141,7 @@ void setup() {
     } 
   }
 
-
+  displays::setContrast(displayContrast1, displayContrast2);
   weatherTick.reset( -weatherUpdateInterval );
 
 }

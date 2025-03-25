@@ -5,6 +5,9 @@
 // #include "FontsRus/FreeMonoBold6.h"
 // #include "FontsRus/FreeMonoBold12.h"
 
+extern uint8_t displayContrast1;
+extern uint8_t displayContrast2;
+
 
 /* Recode russian fonts from UTF-8 to Windows-1251 */
 char * utf8rusTo(const String& source, char * target, const int maxString ){
@@ -119,15 +122,20 @@ namespace TestChars {
 };
 
 namespace displays {
+  void setContrast(const uint8_t c1=50, const uint8_t c2 =50){
+    display1.setContrast(c1);
+    display2.setContrast(c2);
+  };
 void init(){
     display1.begin();
-    display1.setContrast(CONTRAST1); // Установка контраста (0-127)
+    //display1.setContrast(CONTRAST1); // Установка контраста (0-127)
     display1.clearDisplay();
-
     display1.display();
   
     display2.begin();
-    display2.setContrast(CONTRAST2); // Установка контраста (0-127)
+    setContrast(displayContrast1, displayContrast2);
+    
+    //display2.setContrast(CONTRAST2); // Установка контраста (0-127)
     display2.clearDisplay();
     display2.setTextSize(1);
     // display2.setFont(&FreeMonoBold6pt8b);
