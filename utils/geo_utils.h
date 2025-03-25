@@ -5,7 +5,7 @@
 #include <ArduinoJson.h>
 #include "time_utils.h"
 #include "wifi_utils.h"
-
+bool aproximateLocation = true;
 
 //#define POINT_STOP_GEO
 #ifdef POINT_STOP_GEO
@@ -482,33 +482,38 @@ namespace GeoLocation
     //     return _getLocation( apiUrl, data, list, options);
     // };
 
-    namespace Key {
-        //bool has(){ return true; };
-    // #ifdef APP_IPGEOLOCATION_IO_KEY
-    // #pragma message ("USING IpGeolocationIO key")
-    // const char * get(){ return APP_IPGEOLOCATION_IO_KEY; };
-    // #else
-    // const char * get(){ return nullptr; };
-    // #endif
-        inline const char * get() { return geolocationApiKeyStr; };
-        // const char _key[] PROGMEM = APP_IPGEOLOCATION_IO_KEY; 
-        // #else
-        // const char * _key = nullptr; 
-        // #endif
-        // const char * get(){ return _key; };
-        inline bool has(){ return ( get() && get()[0] != 0); };
-    };
+    // namespace Key {
+    //     //bool has(){ return true; };
+    // // #ifdef APP_IPGEOLOCATION_IO_KEY
+    // // #pragma message ("USING IpGeolocationIO key")
+    // // const char * get(){ return APP_IPGEOLOCATION_IO_KEY; };
+    // // #else
+    // // const char * get(){ return nullptr; };
+    // // #endif
+    //     inline const char * get() { return geolocationApiKeyStr; };
+    //     // const char _key[] PROGMEM = APP_IPGEOLOCATION_IO_KEY; 
+    //     // #else
+    //     // const char * _key = nullptr; 
+    //     // #endif
+    //     // const char * get(){ return _key; };
+    //     inline bool has(){ return ( get() && get()[0] != 0); };
+    // };
     
 
     Request::Error getLocation(GeoData &data, Adafruit_PCD8544 * display = nullptr)
     {        
-
         printDots(display);
-        Request::Error err;
-        if ( Key::has() ){
-            err = getLocation_IpGeo(data, Key::get() );
-        } else {
+        Request::Error err = Request::Error::ErrorData;
+        // if ( Key::has() ){
+        //     err = getLocation_IpGeo(data, Key::get() );
+        if ( set.getGeoKey() != nullptr ){
+            err = getLocation_IpGeo(data, set.getGeoKey() );
+        }
+
+        if ( err != Request::Error::OK ) {
             err =  getLocation_speedCloudflare(data);
+        } else {
+            aproximateLocation = false;
         }
         //err =  getLocation_speedCloudflare(data);
         if (!err && data.valid())

@@ -1,4 +1,3 @@
-#include "utils/rtc_utils.h"
 
 #include <Wire.h>
 #include <Adafruit_HTU21DF.h> // Используем библиотеку Adafruit HTU21D
@@ -12,9 +11,11 @@
 #define PRINT_COLOR BLACK
 #define CONTRAST1 55
 #define CONTRAST2 60
-// Глобальные переменные для хранения контраста
-uint8_t displayContrast1 = 50;
-uint8_t displayContrast2 = 50;
+
+
+
+// uint8_t displayContrast1 = 50;
+// uint8_t displayContrast2 = 50;
 
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
@@ -44,6 +45,8 @@ tm* nowTm;
 #include "utils/time_utils.h"
 #include "utils/tz_utils.h"
 
+// Глобальные переменные для хранения настроек в eeprom и в программе
+EepromData set;
 
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
@@ -71,14 +74,16 @@ Adafruit_PCD8544 display1 = Adafruit_PCD8544(14, 13, 0, 15, 16); // CLK, DIN, DC
 String weatherDescription = "";
 float weatherTemp = 0, weatherTempFeel = 0;
 float weatherHumidity = 0;
+
 //bool wifiSleep = false;
 //bool tripleReset;
 
 void setup() {
-
   // Инициализация Serial для отладки
   Serial.begin(115200);
 
+  // load settings from EEPROM 0
+  isSettingsValid = set.load();
   configTime( 0,0, NTP_SERVERS);
   
   // Инициализация экранов
@@ -112,36 +117,44 @@ void setup() {
 
 
   //testPrintDots(display1, 50);
-  EepromData loadedData;
-  hasValidApiKey = loadEepromData( loadedData  );  //loadApiKeys( openWeatherApiKeyStr, geolocationApiKeyStr );
+  // EepromData loadedData;
+  // hasValidApiKey = loadEepromData( loadedData  );  //loadApiKeys( openWeatherApiKeyStr, geolocationApiKeyStr );
   
-  if ( !hasValidApiKey ) {
-    openWeatherApiKeyStr[0] = '\0';
-    geolocationApiKeyStr[0] = '\0';
-  }
-  displays::setContrast(loadedData.getContrast1(), loadedData.getContrast2());
-  CaptivePortal::init(loadedData);
+  // if ( hasValidApiKey ) {
+  //   loadedData.copyWeatherKeyTo(openWeatherApiKeyStr);
+  //   loadedData.copyGeoKeyTo(geolocationApiKeyStr);
+  // } else {
+  //   openWeatherApiKeyStr[0] = '\0';
+  //   geolocationApiKeyStr[0] = '\0';
+  // }
+  // displayContrast1 = loadedData.getContrast1();
+  // displayContrast2 = loadedData.getContrast2();
+
+  displays::setContrast(set.getContrast1(), set.getContrast2());
+  CaptivePortal::init(set);
 
   // Подключение к Wi-Fi
-  connectToWiFi(&display1, SKIP_INIT);
+  connectToWiFi(&display1);
 
   bool validLocation = false;
   while( ! validLocation ){
     auto error = GeoLocation::getLocation( myLocation, &display1 );
     switch( error ){
-      case AsyncRequest::OK:
+      case Request::OK:
         validLocation = true;
         display1.clearDisplay();
         display1.display();
+        if ( aproximateLocation ) display1.print('~');
+        display1.print(myLocation.city);
         break;
       default:
         Serial.print("Error get location: ");
-        hasValidApiKey = false;
-        connectToWiFi(&display1, SKIP_INIT);
+        isSettingsValid = false;
+        connectToWiFi(&display1);
     } 
   }
 
-  displays::setContrast(displayContrast1, displayContrast2);
+  displays::setContrast(set.getContrast1(), set.getContrast2());
   weatherTick.reset( -weatherUpdateInterval );
 
 }

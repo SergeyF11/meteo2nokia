@@ -13,7 +13,7 @@
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 
-//#define POINT_STOP_WEATHER
+#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -182,7 +182,7 @@ namespace Weather {
             requestUri += myLocation.country;
         }
         requestUri += "&units=metric&appid=";
-        requestUri += openWeatherApiKeyStr;
+        requestUri += set.getWeatherKey();
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
         if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
@@ -233,6 +233,7 @@ namespace Weather {
         display.setTextSize(1);
         if (data.cityName[0] != 0) {
             //Display::setFontSize(display, 1);
+            if ( aproximateLocation ) display.print('~');
             display.print(data.cityName);
             //Display::setFontSize(display);
         }
