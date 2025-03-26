@@ -10,21 +10,20 @@
 // #include "wifi_icon.h"
 #include "eeprom_utils.h"
 #include "display_utils.h"
-//#include "slider_html.h"
 #include "wm_params.h"
 #include <MultiResetDetector.h>
 
 WiFiManager wm;
 WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 WiFiManagerParameter geolocationApiKeyParam;
-WiFiManagerParameter contrast1Param;
-WiFiManagerParameter contrast2Param;
-// SliderParameter contrast1Param;
-// SliderParameter contrast2Param;
-// SliderParameter * d1contrastParam;
-// SliderParameter * d2contrastParam;
+// WiFiManagerParameter contrast1Param;
+// WiFiManagerParameter contrast2Param;
 
-SeparatorParameter separator("<hr><br><h3>Контраст:</h3>");
+
+SeparatorParameter separator("<br><hr><h3>Контраст</h3>");
+
+SliderParameter contrastD1;
+SliderParameter contrastD2;
 
 #define POINT_STOP_WIFI
 
@@ -44,11 +43,16 @@ SeparatorParameter separator("<hr><br><h3>Контраст:</h3>");
 extern const char timeZone[];
 extern WiFiManager wm;
 const unsigned long connectionTime = 10000UL;
+// extern char * apiKey;
+//  char openWeatherApiKeyStr[API_KEY_SIZE+1] = {0};
+//  char geolocationApiKeyStr[API_KEY_SIZE+1] = {0};
 volatile bool isSettingsValid = false;
 
 MultiResetDetector tripleReset;
 
 // Глобальные переменные для хранения контраста
+// extern uint8_t displayContrast1;
+// extern uint8_t displayContrast2;
 extern EepromData set;
 
 namespace CaptivePortal
@@ -57,24 +61,14 @@ namespace CaptivePortal
 
   void saveParamsCallback()
   {
-        // Получаем значения контраста из формы
-    //     String c1 = wm.server->arg("contrast1");
-    //     String c2 = wm.server->arg("contrast2");
 
-    // isSettingsValid = set.init(
-    //           openWeatherApiKeyParam.getValue(),
-    //           geolocationApiKeyParam.getValue(),
-    //           c1.toInt(), c2.toInt() ) &&
-    //           set.save();
     isSettingsValid = set.init(
                 openWeatherApiKeyParam.getValue(),
                 geolocationApiKeyParam.getValue(),
-                // d1contrastParam->getValue(),
-                // d2contrastParam->getValue()) &&
-                // contrast1Param.getValue(),
-                // contrast2Param.getValue() ) &&
-                atoi(contrast1Param.getValue()),
-                atoi(contrast2Param.getValue()) ) &&
+                contrastD1.getValue(),
+                contrastD2.getValue() ) &&
+                // atoi(contrast1Param.getValue()),
+                // atoi(contrast2Param.getValue()) ) &&
                 set.save();
 
     if ( ! isSettingsValid ){
@@ -109,53 +103,36 @@ namespace CaptivePortal
     // wm.addParameter(&openWeatherApiKey);
 
     new (&geolocationApiKeyParam) WiFiManagerParameter(
-        "geoKey", "geolocation.io API key (опционально)",
+        "geoKey", "geolocation.io API key",
         loadedData.getGeoKey(), API_KEY_SIZE + 1,
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
-    //  wm.addParameter(&geolocationApiKey);
-    // Добавляем параметры контраста
-    char contrast1_str[4], contrast2_str[4];
-    snprintf(contrast1_str, 4, "%d", loadedData.getContrast1());
-    snprintf(contrast2_str, 4, "%d", loadedData.getContrast2());
 
-    // d1contrastParam = new SliderParameter(
-    //      "contrast1", "Дисплей 1", loadedData.getContrast1(), 20, 99 
-    //   );
-    // d2contrastParam = new SliderParameter(
-    //     "contrast2", "Дисплей 2", loadedData.getContrast1(), 20, 99 
-    //  );
-    // new (&contrast1Param) SliderParameter(
-    //   "contrast1", "Дисплей 1", loadedData.getContrast1(), 20, 99 
-    //  );
+  // Добавляем параметры контраста
+    new (&contrastD1) SliderParameter(
+        "contrast1", "дисплей 1",
+        loadedData.getContrast1(), 0, 100 ); // "type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
 
-    // new (&contrast2Param) SliderParameter(
-    //   "contrast2", "Дисплей 2", loadedData.getContrast2(), 20, 99 
-    // );
-     
-    new (&contrast1Param) WiFiManagerParameter(
-        "contrast1", "Дисплей 1",
-        contrast1_str, 4, "type=\"range\" min=\"20\" max=\"99\" step=\"1\"");
+    new (&contrastD2) SliderParameter(
+        "contrast2", "дисплей 2",
+        loadedData.getContrast2(), 0, 100); //"type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
 
-    new (&contrast2Param) WiFiManagerParameter(
-        "contrast2", "Дисплей 2",
-        contrast2_str, 4, "type=\"range\" min=\"20\" max=\"99\" step=\"1\"");
-
-    
+        
     // Добавляем все параметры в WiFiManager
     wm.addParameter(&openWeatherApiKeyParam);
     wm.addParameter(&geolocationApiKeyParam);
+    //wm.setCustomHeadElement("");
+    // wm.setCustomHeadElement(portalHtml);
+    // wm.addParameter(&contrast1Param);
+    // wm.addParameter(&contrast2Param);
     
-    wm.addParameter( &separator);
+    wm.addParameter(&separator);
 
-    // wm.addParameter(d1contrastParam);
-    // wm.addParameter(d2contrastParam);
-    
-    wm.addParameter(&contrast1Param);
-    wm.addParameter(&contrast2Param);
+    wm.addParameter(&contrastD1);
+    wm.addParameter(&contrastD2);
 
     wm.setSaveParamsCallback(saveParamsCallback);
     
-    wm.setTitle(name);
+    wm.setTitle("Settings");
     
     wm.setConfigPortalTimeout(180);
   };
