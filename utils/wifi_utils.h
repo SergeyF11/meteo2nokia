@@ -20,8 +20,11 @@ WiFiManagerParameter geolocationApiKeyParam;
 
 SeparatorParameter separator("<hr><h3>Контраст</h3>");
 
-SliderParameterTultip contrastD1;
-SliderParameterTultip contrastD2;
+// SliderParameter contrastD1;
+// SliderParameter contrastD2;
+
+SliderControl *contrD1;
+SliderControl *contrD2;
 
 #define POINT_STOP_WIFI
 
@@ -63,8 +66,9 @@ namespace CaptivePortal
     isSettingsValid = set.init(
                 openWeatherApiKeyParam.getValue(),
                 geolocationApiKeyParam.getValue(),
-                contrastD1.getValue(),
-                contrastD2.getValue() ) &&
+                contrD1->getValue(&wm), contrD2->getValue(&wm)) &&
+                // contrastD1.getValue(),
+                // contrastD2.getValue() ) &&
                 // atoi(contrast1Param.getValue()),
                 // atoi(contrast2Param.getValue()) ) &&
                 set.save();
@@ -84,7 +88,9 @@ namespace CaptivePortal
   {
         // Полная очистка предыдущих параметров
         //wm.resetSettings();
-    wm.setCustomHeadElement(SliderParameterTultip::tultip_js);
+    //wm.setCustomHeadElement(SliderParameter::slider_js_css);
+    wm.setCustomHeadElement(SliderControl::css);
+
     wm.setHostname(name);
 
     wm.setConfigPortalBlocking(false);
@@ -107,15 +113,16 @@ namespace CaptivePortal
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
   // Добавляем параметры контраста
-    new (&contrastD1) SliderParameterTultip(
-        "contrast1", "дисплей 1",
-        loadedData.getContrast1(), 0, 100 ); // "type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
+    // new (&contrastD1) SliderParameter(
+    //     "contrast1", "дисплей 1",
+    //     loadedData.getContrast1(), 0, 100 ); // "type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
 
-    new (&contrastD2) SliderParameterTultip(
-        "contrast2", "дисплей 2",
-        loadedData.getContrast2(), 0, 100); //"type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
+    // new (&contrastD2) SliderParameter(
+    //     "contrast2", "дисплей 2",
+    //     loadedData.getContrast2(), 0, 100); //"type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
+    contrD1 = new SliderControl("contrast1", "дисплей1", loadedData.getContrast1() );
+    contrD2 = new SliderControl("contrast2", "дисплей2", loadedData.getContrast2() );
 
-        
     // Добавляем все параметры в WiFiManager
     wm.addParameter(&openWeatherApiKeyParam);
     wm.addParameter(&geolocationApiKeyParam);
@@ -123,12 +130,14 @@ namespace CaptivePortal
     // wm.setCustomHeadElement(portalHtml);
     // wm.addParameter(&contrast1Param);
     // wm.addParameter(&contrast2Param);
-    
-    wm.addParameter(&separator);
 
     
-    wm.addParameter(&contrastD1);
-    wm.addParameter(&contrastD2);
+    wm.addParameter(&separator);
+    wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
+    wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
+    
+    // wm.addParameter(&contrastD1);
+    // wm.addParameter(&contrastD2);
 
     wm.setSaveParamsCallback(saveParamsCallback);
     
