@@ -13,17 +13,15 @@
 #include "wm_params.h"
 #include <MultiResetDetector.h>
 
+// лучше всё это определить в setup
 WiFiManager wm;
 WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 WiFiManagerParameter geolocationApiKeyParam;
-// WiFiManagerParameter contrast1Param;
-// WiFiManagerParameter contrast2Param;
-
 
 SeparatorParameter separator("<hr><h3>Контраст</h3>");
 
-SliderParameter contrastD1;
-SliderParameter contrastD2;
+SliderParameterTultip contrastD1;
+SliderParameterTultip contrastD2;
 
 #define POINT_STOP_WIFI
 
@@ -86,7 +84,7 @@ namespace CaptivePortal
   {
         // Полная очистка предыдущих параметров
         //wm.resetSettings();
-    wm.setCustomHeadElement(SliderParameter::tultip_js);
+    wm.setCustomHeadElement(SliderParameterTultip::tultip_js);
     wm.setHostname(name);
 
     wm.setConfigPortalBlocking(false);
@@ -109,11 +107,11 @@ namespace CaptivePortal
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
   // Добавляем параметры контраста
-    new (&contrastD1) SliderParameter(
+    new (&contrastD1) SliderParameterTultip(
         "contrast1", "дисплей 1",
         loadedData.getContrast1(), 0, 100 ); // "type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
 
-    new (&contrastD2) SliderParameter(
+    new (&contrastD2) SliderParameterTultip(
         "contrast2", "дисплей 2",
         loadedData.getContrast2(), 0, 100); //"type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
 
