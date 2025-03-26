@@ -13,26 +13,8 @@
 #define CONTRAST2 60
 
 
-
-// uint8_t displayContrast1 = 50;
-// uint8_t displayContrast2 = 50;
-
 //#include "utils/weather_icons.h" // Подключаем файл с иконками
 
-// Настройки Wi-Fi
-// const char* ssid = "Your_SSID";
-// const char* password = "Your_PASSWORD";
-// #define MY_CREDENTIAL
-// #include <my.h>
-// const char* ssid = WIFI_SSID;
-// const char* password = WIFI_PASS;
-
-// Настройки OpenWeatherMap
-// const String apiKey = OpenWeatherMap_API_Key;
-// char apiKey[API_KEY_SIZE+1] = {0};
-// const String city = "Moscow";
-// const String country = "RU";
-//const char timeZone[] = "GMT";
 tm* nowTm;
 
 //const String units = "metric"; // Используйте "imperial" для Фаренгейта
@@ -88,8 +70,15 @@ void setup() {
   
   // Инициализация экранов
   displays::init();
-  
-  //tripleReset = MultyReset::check();
+    if ( tripleReset.isTriggered() ){
+    static unsigned long startMs = millis();
+    while(!Serial){ 
+      delay(10);
+      if ( millis()-startMs > 3000UL ) return;
+    }
+    Serial.println("\n\nTriple reset detected!!!\n\n");   
+  }
+
   // TestChars::setDelay(1000);
   // TestChars::run(display1, 2);
 
@@ -130,7 +119,7 @@ void setup() {
   // displayContrast1 = loadedData.getContrast1();
   // displayContrast2 = loadedData.getContrast2();
 
-  displays::setContrast(set.getContrast1(), set.getContrast2());
+  displays::setContrast(set.getContrast1(), set.getContrast2(), &Serial);
   CaptivePortal::init(set);
 
   // Подключение к Wi-Fi

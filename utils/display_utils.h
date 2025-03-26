@@ -239,12 +239,16 @@ extern Adafruit_PCD8544 display2;
 // extern MultiPCD8544 display2;
 namespace displays
 {
-  void setContrast(const uint8_t c1 = 50, const uint8_t c2 = 50)
+  void setContrast(const uint8_t c1 = 50, const uint8_t c2 = 50, Print* p=nullptr)
   {
     display1.setContrast(c1);
     display2.setContrast(c2);
+    if( p ) {
+      p->print("Contrast1="); p->println(c1);
+      p->print("Contrast2="); p->println(c2);
+    }
   };
-  void init()
+  void init(EepromData* settings = nullptr)
   {
     display1.begin();
 
@@ -252,7 +256,9 @@ namespace displays
     display1.display();
 
     display2.begin();
-    setContrast(set.getContrast1(), set.getContrast2());
+    if( settings ) {
+      setContrast(settings->getContrast1(), settings->getContrast2());
+    }
 
     display2.clearDisplay();
     display2.setTextSize(1);

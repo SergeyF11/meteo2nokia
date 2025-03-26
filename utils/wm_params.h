@@ -116,7 +116,9 @@ SliderParameterTultip(const char *id, const char *label, const uint8_t value,
                // Формируем HTML во временном String
         buildHtml(id, label, value);
         //init(NULL, htmlContent, NULL, 0, NULL, WFM_LABEL_BEFORE);
-        init("", htmlContent, "", 0, "", WFM_LABEL_BEFORE);
+        //init("", htmlContent, "", 0, "", WFM_LABEL_BEFORE); 
+        //        init("", "", "", 0, htmlContent, WFM_LABEL_BEFORE);
+        init(NULL, NULL, NULL, 0, htmlContent, WFM_LABEL_BEFORE);
     }
     ~SliderParameterTultip() {
         delete[] htmlContent; // Освобождаем память в деструкторе
