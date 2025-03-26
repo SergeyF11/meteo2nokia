@@ -103,7 +103,7 @@ namespace CaptivePortal
     // wm.addParameter(&openWeatherApiKey);
 
     new (&geolocationApiKeyParam) WiFiManagerParameter(
-        "geoKey", "geolocation.io API key",
+        "geoKey", "geolocation.io API key (опционально)",
         loadedData.getGeoKey(), API_KEY_SIZE + 1,
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
