@@ -18,7 +18,7 @@ class SliderParameter : public WiFiManagerParameter {
     private:
         const uint8_t minVal;
         const uint8_t maxVal;
-        char _type[45] = {0};
+        char _type[100] = {0};
         uint8_t toValue(const char * str) const { 
             auto val = atoi(str);
             if(  minVal > val ) return minVal;
@@ -26,6 +26,8 @@ class SliderParameter : public WiFiManagerParameter {
             return uint8_t(val);
         }
     public:
+    static const char *tultip_js;
+
     SliderParameter() : minVal(0U), maxVal(100U), WiFiManagerParameter("") {};
     SliderParameter(const char *id, const char *placeholder, const uint8_t value, 
         const uint8_t minVal = 0, const uint8_t maxVal = 100, const uint8_t step = 1 )
@@ -36,7 +38,12 @@ class SliderParameter : public WiFiManagerParameter {
                 type += maxVal;
                 type += "\" step=\"";
                 type += step;
-                type += '"';
+                type += "\" oninput=\"updateTooltip(this)\""; // Добавляем обработчик
+//                type += " title=\"Текущее значение: ";
+                type += " title=\"";
+                type += value;
+                type += "\""; // Подсказка при наведении
+//                type += " style=\"width: 100%;\""; // Опционально: растягиваем на всю ширину
             strcpy(_type, type.c_str());
             _type[ type.length()] = '\0';
             init(id, placeholder, String(value).c_str(), 4, _type, WFM_LABEL_BEFORE);
@@ -46,6 +53,16 @@ class SliderParameter : public WiFiManagerParameter {
             return toValue( WiFiManagerParameter::getValue() );
         }
 };
+const char * SliderParameter::tultip_js = R"(
+<script>
+function updateTooltip(slider) {
+    slider.setAttribute('title', 'Текущее значение: ' + slider.value);
+}
+</script>
+)";
+
+/*    const tooltip = document.getElementById(slider.id + '-tooltip');
+    if (tooltip) tooltip.textContent = slider.value;*/
 
 class SeparatorParameter : public WiFiManagerParameter {
     private:

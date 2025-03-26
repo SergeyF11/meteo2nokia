@@ -20,7 +20,7 @@ WiFiManagerParameter geolocationApiKeyParam;
 // WiFiManagerParameter contrast2Param;
 
 
-SeparatorParameter separator("<br><hr><h3>Контраст</h3>");
+SeparatorParameter separator("<hr><h3>Контраст</h3>");
 
 SliderParameter contrastD1;
 SliderParameter contrastD2;
@@ -86,6 +86,7 @@ namespace CaptivePortal
   {
         // Полная очистка предыдущих параметров
         //wm.resetSettings();
+    wm.setCustomHeadElement(SliderParameter::tultip_js);
     wm.setHostname(name);
 
     wm.setConfigPortalBlocking(false);
@@ -127,6 +128,7 @@ namespace CaptivePortal
     
     wm.addParameter(&separator);
 
+    
     wm.addParameter(&contrastD1);
     wm.addParameter(&contrastD2);
 
