@@ -2,11 +2,9 @@
 
 #define NTP_SERVERS "ntp1.stratum2.ru", "ru.pool.ntp.org", "pool.ntp.org"
 
-// #include <WiFi.h>
 #include <WiFiManager.h>
 #include <ESP8266WiFi.h>
-// #include <Adafruit_GFX.h>
-// #include <Adafruit_PCD8544_multi.h>
+
 // #include "wifi_icon.h"
 #include "eeprom_utils.h"
 #include "display_utils.h"
@@ -18,10 +16,6 @@ WiFiManager wm;
 WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 WiFiManagerParameter geolocationApiKeyParam;
 
-//SeparatorParameter separator("<hr><h3>Контраст</h3>");
-
-// SliderParameter contrastD1;
-// SliderParameter contrastD2;
 
 SliderControl *contrD1;
 SliderControl *contrD2;
@@ -39,26 +33,68 @@ SliderControl *contrD2;
 #define pointStop(ms, fmt, ...)
 #endif
 
-// extern const char* ssid;
-// extern const char* password;
 extern const char timeZone[];
 extern WiFiManager wm;
 const unsigned long connectionTime = 10000UL;
-// extern char * apiKey;
-//  char openWeatherApiKeyStr[API_KEY_SIZE+1] = {0};
-//  char geolocationApiKeyStr[API_KEY_SIZE+1] = {0};
 volatile bool isSettingsValid = false;
 
 MultiResetDetector tripleReset;
 
-// Глобальные переменные для хранения контраста
-// extern uint8_t displayContrast1;
-// extern uint8_t displayContrast2;
+// Глобальные переменные для хранения настроек
 extern EepromData set;
 
 namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
+  static const char contrD1_id[] = "d1contr";
+  static const char contrD2_id[] = "d2contr";
+  
+
+  void contrastHandler(){
+      if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
+        String id = ::wm.server->arg("id");
+        uint8_t value = ::wm.server->arg("value").toInt();
+        
+        if (id.equals(contrD1_id)) {
+          displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки функции
+        }
+        if (id.equals(contrD2_id)) {
+          displays::setContrast( +2, value, &Serial);
+        }
+        ::wm.server->send(200, "text/plain", "OK");
+      } else {
+        ::wm.server->send(400, "text/plain", "Bad Request");
+      }
+    }
+    void sliderCallback(){
+      wm.server->on("/slider", HTTP_GET, contrastHandler);
+    }
+
+ void slidersGetHandler(){
+    wm.server->on("/slider", HTTP_GET, contrastHandler);
+  } 
+  void addSliderHandler(WiFiManager& wm, const char* handlerName,
+        const char* id1,  
+        const char* id2 )
+  {
+
+    wm.server->on(handlerName, HTTP_GET, [id1, id2](){
+      if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
+        String id = ::wm.server->arg("id");
+        uint8_t value = ::wm.server->arg("value").toInt();
+        
+        if (id.equals(id1)) {
+          displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки
+        }
+        if (id.equals(id2)) {
+          displays::setContrast( +2, value, &Serial);
+        }
+        ::wm.server->send(200, "text/plain", "OK");
+      } else {
+        ::wm.server->send(400, "text/plain", "Bad Request");
+      }
+    });
+  }
 
   void saveParamsCallback()
   {
@@ -89,13 +125,21 @@ namespace CaptivePortal
         // Полная очистка предыдущих параметров
         //wm.resetSettings();
 
+        // addSliderHandler(wm, "/slider", contrD1_id, contrD2_id);
+        // pointStop(0, "Handler setted\n");
+ 
+
     //wm.setCustomHeadElement(SliderControl::get);
     SliderControl::setupStyle(wm);
 
+    pointStop(0, "Style setted\n");
+
     wm.setHostname(name);
 
+
     wm.setConfigPortalBlocking(false);
-    pointStop(0, "Load data\n");
+
+  
     //char html[1024];
     // snprintf(portalHtml, sizeof(portalHtml), slider_html,
     //          loadedData.getContrast1(), loadedData.getContrast1(),
@@ -113,23 +157,34 @@ namespace CaptivePortal
         loadedData.getGeoKey(), API_KEY_SIZE + 1,
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
+        pointStop(0, "Try add contrast sliders\n");
   // Добавляем параметры контраста
-    contrD1 = new SliderControl("contrast1", "дисплей погоды", loadedData.getContrast1() );
-    contrD2 = new SliderControl("contrast2", "дисплей часы/датчик", loadedData.getContrast2() );
+    contrD1 = new SliderControl(contrD1_id, "дисплей погоды", loadedData.getContrast1(), 30, 90 );
+    contrD2 = new SliderControl(contrD2_id, "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
+
 
     // Добавляем все параметры в WiFiManager
     wm.addParameter(&openWeatherApiKeyParam);
     wm.addParameter(&geolocationApiKeyParam);
 
-    
-    //wm.addParameter(&separator);
     wm.addParameter(new SeparatorParameter("<hr><h3>Контраст</h3>"));
     wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
     wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
     
     wm.setSaveParamsCallback(saveParamsCallback);
+
+    pointStop(0, "Add handler\n");
     
-    wm.setTitle("Settings");
+    wm.setWebServerCallback(sliderCallback);
+    // contrD1->setCallback([](uint8_t c){ display1.setContrast(c); });
+    // contrD2->setCallback([](uint8_t c){ display2.setContrast(c); });
+    // wm.setWebServerCallback([](){
+    //   wm.server->on("/slider", HTTP_GET, [](){ 
+    //     SliderControl::httpHandler(&wm, {contrD1, contrD2});
+    //   });
+    // });
+
+    wm.setTitle(name);
     
     wm.setConfigPortalTimeout(180);
   };

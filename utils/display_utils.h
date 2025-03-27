@@ -239,6 +239,24 @@ extern Adafruit_PCD8544 display2;
 // extern MultiPCD8544 display2;
 namespace displays
 {
+  void setContrast(const int idx, const uint8_t c, Print* p=nullptr)
+  {
+    switch(idx){
+      case 1:
+        display1.setContrast(c);
+        break;
+      case 2:
+        display2.setContrast(c);
+        break;
+      default:
+        if(p) p->println("incorrect display index");
+        return;
+    }
+    if( p ) {
+      p->print("display "); p->print(idx);
+      p->print("set contrast="); p->println(c);
+    }
+  };
   void setContrast(const uint8_t c1 = 50, const uint8_t c2 = 50, Print* p=nullptr)
   {
     display1.setContrast(c1);
