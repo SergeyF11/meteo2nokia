@@ -46,19 +46,19 @@ extern EepromData set;
 namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
-  static const char contrD1_id[] = "d1contr";
-  static const char contrD2_id[] = "d2contr";
+  // static const char contrD1_id[] = "d1contr";
+  // static const char contrD2_id[] = "d2contr";
   
 
-  void static contrastCB(){
-    pointStop(0,"\n");
-    SliderControl::_httpHandler(&wm); //, {contrD1, contrD2});
-  }
+  // void static contrastCB(){
+  //   pointStop(0,"\n");
+  //   SliderControl::_httpHandler(&wm); //, {contrD1, contrD2});
+  // }
 
-  void static slidersWebCallback(){
-    pointStop(0,"\n");
-    wm.server->on("/slider", HTTP_GET, contrastCB);
-  }
+  // void static slidersWebCallback(){
+  //   pointStop(0,"\n");
+  //   wm.server->on("/slider", HTTP_GET, SliderControl::webServerCallback); //contrastCB);
+  // }
 
   // void addSliderHandler(WiFiManager& wm, const char* handlerName,
   //       const char* id1,  
@@ -117,7 +117,7 @@ namespace CaptivePortal
  
 
     //wm.setCustomHeadElement(SliderControl::get);
-    SliderControl::_setupStyle(wm);
+    SliderControl::init(wm);
 
     pointStop(0, "Style setted\n");
 
@@ -150,26 +150,32 @@ namespace CaptivePortal
 
     pointStop(0, "Try to set WiFiManager to sliders\n");
   // Добавляем параметры контраста
-    SliderControl::setWiFiManager( &wm );
+    SliderControl::init( wm );
 
     pointStop(0, "Try to create sliders\n");
-    contrD1 = new SliderControl(contrD1_id, "дисплей погоды", loadedData.getContrast1(), 30, 90 );
-    contrD2 = new SliderControl(contrD2_id, "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
-    contrD1->setCallback([](uint8_t c){ display1.setContrast(c); });
-    contrD2->setCallback([](uint8_t c){ display2.setContrast(c); });
+    contrD1 = new SliderControl("d1ctr", "дисплей погоды", loadedData.getContrast1(), 30, 90 );
+    contrD2 = new SliderControl("d2ctr", "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
+    contrD1->setValueChangedCallback([](uint8_t c){ 
+      pointStop(0,"Display 1 set contrast=%u\n", c);
+      display1.setContrast(c); });
+    contrD2->setValueChangedCallback([](uint8_t c){ 
+      pointStop(0,"Display 2 set contrast=%u\n", c);
+      display2.setContrast(c); });
 
     pointStop(0, "Try to add contrast sliders\n");
     wm.addParameter(new SeparatorParameter("<hr><h3>Контраст</h3>"));
-    wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
-    wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
+    wm.addParameter(new WiFiManagerParameter(contrD1->getCustomHTML()));
+    wm.addParameter(new WiFiManagerParameter(contrD2->getCustomHTML()));
 
     pointStop(0, "Try to add web CB\n");
-    //SliderControl::addWebServerCallback();
-    wm.setWebServerCallback(SliderControl::webServerCallback);
+    //SliderControl::addWebServerCallback( );
+
+    wm.setWebServerCallback([](){ 
+      wm.server->on(SliderControl::httpPath(), SliderControl::webServerCallback); } );
 
     pointStop(0, "Add handler\n");
     
-    //wm.setWebServerCallback(slidersWebCallback);
+  
     //wm.setWebServerCallback(SliderControl::httpHandler);
         
     wm.setSaveParamsCallback(saveParamsCallback);

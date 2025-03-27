@@ -260,9 +260,6 @@ class SeparatorParameter : public WiFiManagerParameter {
 // };
 
 class SliderControl {
-    private:
-    static std::vector<SliderControl *> list;
-    static WiFiManager * _wm;
 
 public:
     using ValueChangedCallback = std::function<void(uint8_t value)>;
@@ -270,26 +267,17 @@ public:
     SliderControl(const String& id, const String& label, 
                 uint8_t value = 50, 
                 uint8_t min = 0, 
-                uint8_t max = 100, WiFiManager* wmP=nullptr)
+                uint8_t max = 100)
         : id(id), label(label), value(value), minVal(min), maxVal(max) {
         list.push_back(this);   
         buildHTML();
-        if ( wmP ) SliderControl::_wm = wmP;
     }
-    // #if defined(ESP32) && defined(WM_WEBSERVERSHIM)
-    // using WM_WebServer = WebServer;
-    // #else
-    //     using WM_WebServer = ESP8266WebServer;
-    // #endif
 
-    static void setWiFiManager(WiFiManager* wm){
-        SliderControl::_wm = wm;
-    }
-    void setCallback(ValueChangedCallback callback) {
+    void setValueChangedCallback(ValueChangedCallback callback) {
         this->callback = callback;
     }
 
-    const char* getHTML() const {
+    const char* getCustomHTML() const {
         return htmlContent;
     }
     // Получение значения после отправки формы
@@ -297,28 +285,18 @@ public:
         String val = wm->server->arg(id);
         return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
     }
-    // Получение значения после отправки формы
-    uint8_t getValue() const {
-        assert(SliderControl::_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
-        String val = SliderControl::_wm->server->arg(id);
-        return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
-    }
+
     // Статический метод для добавления CSS/JS
-    static void _setupStyle(WiFiManager& wm) {
+    static void init(WiFiManager& wm) {
+        _wm = &wm;
         wm.setCustomHeadElement(getSliderCssJs());
     }
-    // Статический метод для добавления CSS/JS
-    static void setupStyle() {
-        assert(SliderControl::_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
-        SliderControl::_wm->setCustomHeadElement(getSliderCssJs());
-    }
-    // static void _httpHandler(){
 
-    // }
-    static void _httpHandler(WiFiManager* wm) {//, std::initializer_list<SliderControl *> list) {
-        if (wm->server->hasArg("id") && wm->server->hasArg("value")) {
-            String id = wm->server->arg("id");
-            uint8_t value = wm->server->arg("value").toInt();
+     static void webServerCallback(){
+        assert(_wm && "Call SliderControl::init(WiFiManager) before" );
+        if (_wm->server->hasArg("id") && SliderControl::_wm->server->hasArg("value")) {
+            String id = _wm->server->arg("id");
+            uint8_t value = _wm->server->arg("value").toInt();
             bool isValidId = false;
             for( auto slider : list) {
                 if ( id.equals( slider->id)) {
@@ -328,55 +306,22 @@ public:
                 }
             }
             if( isValidId )
-                wm->server->send(200, "text/plain", "OK");
+                _wm->server->send(200, "text/plain", "OK");
             else
-                wm->server->send(404, "text/plain", "Wrong parameter");
+                _wm->server->send(404, "text/plain", "Wrong parameter");
         } else {
-            wm->server->send(400, "text/plain", "Bad Request");
-        }
-    }
-
-    static void webServerCallback(){
-        assert(SliderControl::_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
-        if (SliderControl::_wm->server->hasArg("id") && SliderControl::_wm->server->hasArg("value")) {
-            String id = SliderControl::_wm->server->arg("id");
-            uint8_t value = SliderControl::_wm->server->arg("value").toInt();
-            bool isValidId = false;
-            for( auto slider : list) {
-                if ( id.equals( slider->id)) {
-                    isValidId = true;
-                    slider->callback(value);
-                    break;
-                }
-            }
-            if( isValidId )
-                SliderControl::_wm->server->send(200, "text/plain", "OK");
-            else
-                SliderControl::_wm->server->send(404, "text/plain", "Wrong parameter");
-        } else {
-            SliderControl::_wm->server->send(400, "text/plain", "Bad Request");
+            _wm->server->send(400, "text/plain", "Bad Request");
         }
     }
     static void addWebServerCallback(){
-        assert(SliderControl::_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
-        SliderControl::_wm->server->on( "/slider", HTTP_GET, SliderControl::webServerCallback);
-    };
-    static void addWebServerCallback(WiFiManager& wm){
-        wm.server->on( "/slider", HTTP_GET, SliderControl::webServerCallback);
+        assert(_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
+        _wm->server->on( httpPath(), HTTP_GET, SliderControl::webServerCallback);
     };
 
-    void _process(WiFiManager* wm) {
-        if (wm->server->hasArg(id)) {
-            uint8_t newValue = constrain(wm->server->arg(id).toInt(), minVal, maxVal);
-            if (callback && newValue != lastValue) {
-                callback( newValue);
-                lastValue = newValue;
-            }
-        }
-    }
+
     void process() {
-        if (SliderControl::_wm->server->hasArg(id)) {
-            uint8_t newValue = constrain(SliderControl::_wm->server->arg(id).toInt(), minVal, maxVal);
+        if (_wm->server->hasArg(id)) {
+            uint8_t newValue = constrain(_wm->server->arg(id).toInt(), minVal, maxVal);
             if (callback && newValue != lastValue) {
                 callback( newValue);
                 lastValue = newValue;
@@ -384,6 +329,7 @@ public:
         }
     }
 
+    static const char* httpPath(){ return R"(/slider)";};
 private:
     String id;
     String label;
@@ -393,8 +339,8 @@ private:
     uint8_t lastValue = 0;
     char* htmlContent = nullptr;
     ValueChangedCallback callback = nullptr;
-    // static std::vector<SliderControl *> list;
-    // static WiFiManager * _wm;
+    static std::vector<SliderControl *> list;
+    static WiFiManager * _wm;
 
     void buildHTML() {
         String html;
@@ -417,7 +363,7 @@ private:
         htmlContent = new char[html.length() + 1];
         strcpy(htmlContent, html.c_str());
     }
-    static const char* httpPath(){ return R"(/slider)";};
+
     static const char* getSliderCssJs(){    
             return R"(
     <style>
@@ -454,6 +400,6 @@ private:
 )"; }
     
 };
-WiFiManager* SliderControl::_wm = nullptr;
+WiFiManager * SliderControl::_wm = nullptr;
 std::vector<SliderControl *> SliderControl::list = {};
 
