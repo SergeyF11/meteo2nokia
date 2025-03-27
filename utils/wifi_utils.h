@@ -50,51 +50,38 @@ namespace CaptivePortal
   static const char contrD2_id[] = "d2contr";
   
 
-  void contrastHandler(){
-      if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
-        String id = ::wm.server->arg("id");
-        uint8_t value = ::wm.server->arg("value").toInt();
-        
-        if (id.equals(contrD1_id)) {
-          displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки функции
-        }
-        if (id.equals(contrD2_id)) {
-          displays::setContrast( +2, value, &Serial);
-        }
-        ::wm.server->send(200, "text/plain", "OK");
-      } else {
-        ::wm.server->send(400, "text/plain", "Bad Request");
-      }
-    }
-    void sliderCallback(){
-      wm.server->on("/slider", HTTP_GET, contrastHandler);
-    }
-
- void slidersGetHandler(){
-    wm.server->on("/slider", HTTP_GET, contrastHandler);
-  } 
-  void addSliderHandler(WiFiManager& wm, const char* handlerName,
-        const char* id1,  
-        const char* id2 )
-  {
-
-    wm.server->on(handlerName, HTTP_GET, [id1, id2](){
-      if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
-        String id = ::wm.server->arg("id");
-        uint8_t value = ::wm.server->arg("value").toInt();
-        
-        if (id.equals(id1)) {
-          displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки
-        }
-        if (id.equals(id2)) {
-          displays::setContrast( +2, value, &Serial);
-        }
-        ::wm.server->send(200, "text/plain", "OK");
-      } else {
-        ::wm.server->send(400, "text/plain", "Bad Request");
-      }
-    });
+  void static contrastCB(){
+    pointStop(0,"\n");
+    SliderControl::_httpHandler(&wm); //, {contrD1, contrD2});
   }
+
+  void static slidersWebCallback(){
+    pointStop(0,"\n");
+    wm.server->on("/slider", HTTP_GET, contrastCB);
+  }
+
+  // void addSliderHandler(WiFiManager& wm, const char* handlerName,
+  //       const char* id1,  
+  //       const char* id2 )
+  // {
+
+  //   wm.server->on(handlerName, HTTP_GET, [id1, id2](){
+  //     if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
+  //       String id = ::wm.server->arg("id");
+  //       uint8_t value = ::wm.server->arg("value").toInt();
+        
+  //       if (id.equals(id1)) {
+  //         displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки
+  //       }
+  //       if (id.equals(id2)) {
+  //         displays::setContrast( +2, value, &Serial);
+  //       }
+  //       ::wm.server->send(200, "text/plain", "OK");
+  //     } else {
+  //       ::wm.server->send(400, "text/plain", "Bad Request");
+  //     }
+  //   });
+  // }
 
   void saveParamsCallback()
   {
@@ -130,7 +117,7 @@ namespace CaptivePortal
  
 
     //wm.setCustomHeadElement(SliderControl::get);
-    SliderControl::setupStyle(wm);
+    SliderControl::_setupStyle(wm);
 
     pointStop(0, "Style setted\n");
 
@@ -157,32 +144,36 @@ namespace CaptivePortal
         loadedData.getGeoKey(), API_KEY_SIZE + 1,
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
-        pointStop(0, "Try add contrast sliders\n");
+      // Добавляем все параметры в WiFiManager
+    wm.addParameter(&openWeatherApiKeyParam);
+    wm.addParameter(&geolocationApiKeyParam);  
+
+    pointStop(0, "Try to set WiFiManager to sliders\n");
   // Добавляем параметры контраста
+    SliderControl::setWiFiManager( &wm );
+
+    pointStop(0, "Try to create sliders\n");
     contrD1 = new SliderControl(contrD1_id, "дисплей погоды", loadedData.getContrast1(), 30, 90 );
     contrD2 = new SliderControl(contrD2_id, "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
+    contrD1->setCallback([](uint8_t c){ display1.setContrast(c); });
+    contrD2->setCallback([](uint8_t c){ display2.setContrast(c); });
 
-
-    // Добавляем все параметры в WiFiManager
-    wm.addParameter(&openWeatherApiKeyParam);
-    wm.addParameter(&geolocationApiKeyParam);
-
+    pointStop(0, "Try to add contrast sliders\n");
     wm.addParameter(new SeparatorParameter("<hr><h3>Контраст</h3>"));
     wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
     wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
-    
-    wm.setSaveParamsCallback(saveParamsCallback);
+
+    pointStop(0, "Try to add web CB\n");
+    //SliderControl::addWebServerCallback();
+    wm.setWebServerCallback(SliderControl::webServerCallback);
 
     pointStop(0, "Add handler\n");
     
-    wm.setWebServerCallback(sliderCallback);
-    // contrD1->setCallback([](uint8_t c){ display1.setContrast(c); });
-    // contrD2->setCallback([](uint8_t c){ display2.setContrast(c); });
-    // wm.setWebServerCallback([](){
-    //   wm.server->on("/slider", HTTP_GET, [](){ 
-    //     SliderControl::httpHandler(&wm, {contrD1, contrD2});
-    //   });
-    // });
+    //wm.setWebServerCallback(slidersWebCallback);
+    //wm.setWebServerCallback(SliderControl::httpHandler);
+        
+    wm.setSaveParamsCallback(saveParamsCallback);
+    // //wm.setSaveParamsCallback(SliderControl::addHandler);
 
     wm.setTitle(name);
     
