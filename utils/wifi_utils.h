@@ -18,7 +18,7 @@ WiFiManager wm;
 WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key", apiKey, 40, ""placeholder=\"visit OpenWeather.com for get your Api key\"")" );
 WiFiManagerParameter geolocationApiKeyParam;
 
-SeparatorParameter separator("<hr><h3>Контраст</h3>");
+//SeparatorParameter separator("<hr><h3>Контраст</h3>");
 
 // SliderParameter contrastD1;
 // SliderParameter contrastD2;
@@ -88,8 +88,9 @@ namespace CaptivePortal
   {
         // Полная очистка предыдущих параметров
         //wm.resetSettings();
-    //wm.setCustomHeadElement(SliderParameter::slider_js_css);
-    wm.setCustomHeadElement(SliderControl::css);
+
+    //wm.setCustomHeadElement(SliderControl::get);
+    SliderControl::setupStyle(wm);
 
     wm.setHostname(name);
 
@@ -113,32 +114,19 @@ namespace CaptivePortal
         "placeholder=\"для улучшения точности получите ключ на geolocation.io\""); // optional, for greater accuracy visit geolocation.io for get your Api key\"" );
 
   // Добавляем параметры контраста
-    // new (&contrastD1) SliderParameter(
-    //     "contrast1", "дисплей 1",
-    //     loadedData.getContrast1(), 0, 100 ); // "type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
-
-    // new (&contrastD2) SliderParameter(
-    //     "contrast2", "дисплей 2",
-    //     loadedData.getContrast2(), 0, 100); //"type=\"range\" min=\"0\" max=\"100\" step=\"1\"");
-    contrD1 = new SliderControl("contrast1", "дисплей1", loadedData.getContrast1() );
-    contrD2 = new SliderControl("contrast2", "дисплей2", loadedData.getContrast2() );
+    contrD1 = new SliderControl("contrast1", "дисплей погоды", loadedData.getContrast1() );
+    contrD2 = new SliderControl("contrast2", "дисплей часы/датчик", loadedData.getContrast2() );
 
     // Добавляем все параметры в WiFiManager
     wm.addParameter(&openWeatherApiKeyParam);
     wm.addParameter(&geolocationApiKeyParam);
-    //wm.setCustomHeadElement("");
-    // wm.setCustomHeadElement(portalHtml);
-    // wm.addParameter(&contrast1Param);
-    // wm.addParameter(&contrast2Param);
 
     
-    wm.addParameter(&separator);
+    //wm.addParameter(&separator);
+    wm.addParameter(new SeparatorParameter("<hr><h3>Контраст</h3>"));
     wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
     wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
     
-    // wm.addParameter(&contrastD1);
-    // wm.addParameter(&contrastD2);
-
     wm.setSaveParamsCallback(saveParamsCallback);
     
     wm.setTitle("Settings");
