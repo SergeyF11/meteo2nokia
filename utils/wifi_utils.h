@@ -17,10 +17,10 @@ WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key",
 WiFiManagerParameter geolocationApiKeyParam;
 
 
-SliderControl *contrD1;
-SliderControl *contrD2;
+SliderControlV *contrD1;
+SliderControlV *contrD2;
 
-#define POINT_STOP_WIFI
+//#define POINT_STOP_WIFI
 
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...)                               \
@@ -46,42 +46,7 @@ extern EepromData set;
 namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
-  // static const char contrD1_id[] = "d1contr";
-  // static const char contrD2_id[] = "d2contr";
-  
-
-  // void static contrastCB(){
-  //   pointStop(0,"\n");
-  //   SliderControl::_httpHandler(&wm); //, {contrD1, contrD2});
-  // }
-
-  // void static slidersWebCallback(){
-  //   pointStop(0,"\n");
-  //   wm.server->on("/slider", HTTP_GET, SliderControl::webServerCallback); //contrastCB);
-  // }
-
-  // void addSliderHandler(WiFiManager& wm, const char* handlerName,
-  //       const char* id1,  
-  //       const char* id2 )
-  // {
-
-  //   wm.server->on(handlerName, HTTP_GET, [id1, id2](){
-  //     if (::wm.server->hasArg("id") && ::wm.server->hasArg("value")) {
-  //       String id = ::wm.server->arg("id");
-  //       uint8_t value = ::wm.server->arg("value").toInt();
-        
-  //       if (id.equals(id1)) {
-  //         displays::setContrast( +1, value, &Serial); // знак нужен для правильной перезагрузки
-  //       }
-  //       if (id.equals(id2)) {
-  //         displays::setContrast( +2, value, &Serial);
-  //       }
-  //       ::wm.server->send(200, "text/plain", "OK");
-  //     } else {
-  //       ::wm.server->send(400, "text/plain", "Bad Request");
-  //     }
-  //   });
-  // }
+ 
 
   void saveParamsCallback()
   {
@@ -89,11 +54,7 @@ namespace CaptivePortal
     isSettingsValid = set.init(
                 openWeatherApiKeyParam.getValue(),
                 geolocationApiKeyParam.getValue(),
-                contrD1->getValue(&wm), contrD2->getValue(&wm)) &&
-                // contrastD1.getValue(),
-                // contrastD2.getValue() ) &&
-                // atoi(contrast1Param.getValue()),
-                // atoi(contrast2Param.getValue()) ) &&
+                contrD1->getValue(), contrD2->getValue()) &&
                 set.save();
 
     if ( ! isSettingsValid ){
@@ -109,15 +70,6 @@ namespace CaptivePortal
 
   inline void init(EepromData &loadedData)
   {
-        // Полная очистка предыдущих параметров
-        //wm.resetSettings();
-
-        // addSliderHandler(wm, "/slider", contrD1_id, contrD2_id);
-        // pointStop(0, "Handler setted\n");
- 
-
-    //wm.setCustomHeadElement(SliderControl::get);
-    SliderControl::init(wm);
 
     pointStop(0, "Style setted\n");
 
@@ -149,38 +101,40 @@ namespace CaptivePortal
     wm.addParameter(&geolocationApiKeyParam);  
 
     pointStop(0, "Try to set WiFiManager to sliders\n");
+
   // Добавляем параметры контраста
-    SliderControl::init( wm );
+    SliderControlV::init( wm );
 
     pointStop(0, "Try to create sliders\n");
-    contrD1 = new SliderControl("d1ctr", "дисплей погоды", loadedData.getContrast1(), 30, 90 );
-    contrD2 = new SliderControl("d2ctr", "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
-    contrD1->setValueChangedCallback([](uint8_t c){ 
+    contrD1 = new SliderControlV( "d1ctr", "дисплей погоды", loadedData.getContrast1(), 30, 90 );
+    contrD2 = new SliderControlV( "d2ctr", "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
+    contrD1->setCallback([](uint8_t c){ 
       pointStop(0,"Display 1 set contrast=%u\n", c);
       display1.setContrast(c); });
-    contrD2->setValueChangedCallback([](uint8_t c){ 
+    contrD2->setCallback([](uint8_t c){ 
       pointStop(0,"Display 2 set contrast=%u\n", c);
       display2.setContrast(c); });
+    
+    
+    pointStop(0, "Try to add web CB\n");
+    //SliderControl::setupHTTPHandler(wm, {contrD1, contrD2});
 
     pointStop(0, "Try to add contrast sliders\n");
     wm.addParameter(new SeparatorParameter("<hr><h3>Контраст</h3>"));
-    wm.addParameter(new WiFiManagerParameter(contrD1->getCustomHTML()));
-    wm.addParameter(new WiFiManagerParameter(contrD2->getCustomHTML()));
+    wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
+    wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
 
-    pointStop(0, "Try to add web CB\n");
-    //SliderControl::addWebServerCallback( );
-
-    wm.setWebServerCallback([](){ 
-      wm.server->on(SliderControl::httpPath(), SliderControl::webServerCallback); } );
-
-    pointStop(0, "Add handler\n");
+    // wm.setWebServerCallback([](){ 
+    //   pointStop(0,"Server pointer=%x\n", &(wm.server));
+    //   wm.server->on(SliderControl::httpPath, SliderControl::webServerCallback); } );
     
-  
-    //wm.setWebServerCallback(SliderControl::httpHandler);
+    
+    pointStop(0, "Add handler\n");
+    //SliderControlI::init(wm, {contrD1, contrD2});
+    SliderControlV::addWebServerCallback( );
+
         
     wm.setSaveParamsCallback(saveParamsCallback);
-    // //wm.setSaveParamsCallback(SliderControl::addHandler);
-
     wm.setTitle(name);
     
     wm.setConfigPortalTimeout(180);

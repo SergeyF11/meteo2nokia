@@ -15,11 +15,14 @@ struct SimpleTicker {
   void reset(const unsigned long ms=0){
     lastTick = ms ? ms : millis();
   };
+  unsigned long msToNextTick() const {
+    return (millis() - lastTick);
+  }
 //   void set(const unsigned long ms){
 //     lastTick = ms;
 //   };
   bool tick(){
-    bool res = ( millis() - lastTick >= interval );
+    bool res = ( msToNextTick() >= interval );
     if (res ) reset();
     return res;
   };

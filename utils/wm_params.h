@@ -52,170 +52,317 @@ class SeparatorParameter : public WiFiManagerParameter {
       }
 };
 
+class SliderControlV {
 
-// class SliderControlV1 {
+    public:
+        using ValueChangedCallback = std::function<void(uint8_t value)>;
+        
+        SliderControlV(const String& id, const String& label, 
+                    uint8_t value = 50, 
+                    uint8_t min = 0, 
+                    uint8_t max = 100)
+            : id(id), label(label), value(value), minVal(min), maxVal(max) {
+            list.push_back(this);   
+            buildHTML();
+        }
+    
+        ~SliderControlV(){
+            delete[] htmlContent;
+            list.erase(
+                std::remove(list.begin(), list.end(), this),
+                list.end()
+            );
+            if ( list.empty() ) std::vector<SliderControlV *>().swap(list);
+        };
+    
+        void setCallback(ValueChangedCallback callback) {
+            this->callback = callback;
+        }
+    
+        const char* getHTML() const {
+            return htmlContent;
+        }
+    
+        uint8_t getValue() const {
+            String val = _wm->server->arg(id);
+            return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
+        }
+        // Статический метод для добавления CSS/JS
+        static bool init(WiFiManager& wm) {
+            if ( _wm != nullptr ){
+                if( _wm != &wm ) return false;
+                else return true;
+            }
+            _wm = &wm;
+            wm.setCustomHeadElement(getSliderCssJs());
+            return true;    
+        }
+    
+         static void webServerCallback(){
+            if (_wm->server->hasArg("id") && _wm->server->hasArg("value")) {
+                String id = _wm->server->arg("id");
+                uint8_t value = _wm->server->arg("value").toInt();
+                bool isValidId = false;
+                for( auto slider : list) {
+                    if ( id.equals( slider->id)) {
+                        isValidId = true;
+                        slider->callback(value);
+                        break;
+                    }
+                }
+                if( isValidId )
+                    _wm->server->send(200, "text/plain", "OK");
+                else
+                    _wm->server->send(404, "text/plain", "Wrong parameter");
+            } else {
+                _wm->server->send(400, "text/plain", "Bad Request");
+            }
+        }
+    
+        static void addWebServerCallback(){
+            assert(_wm && "Call SliderControl::init(WiFiManager&) first" );
+            _wm->setWebServerCallback( [](){
+                _wm->server->on( _httpPath(), webServerCallback); }
+            );
+        };
+    
+    
+        void process() {
+            if (_wm->server->hasArg(id)) {
+                uint8_t newValue = constrain(_wm->server->arg(id).toInt(), minVal, maxVal);
+                if (callback && newValue != lastValue) {
+                    callback( newValue);
+                    lastValue = newValue;
+                }
+            }
+        }
+        
+        
+    private:
+        String id;
+        String label;
+        uint8_t value;
+        uint8_t minVal;
+        uint8_t maxVal;
+        uint8_t lastValue = 0;
+        char* htmlContent = nullptr;
+        ValueChangedCallback callback = nullptr;
+        static std::vector<SliderControlV *> list;
+        static WiFiManager * _wm;
+        static const char* _httpPath(){ return R"(/slider)";};
+    
+        void buildHTML() {
+            String html;
+            html.reserve(400);
+            
+            html += "<div class='slider-panel'>";
+            html += "<div class='slider-header'>";
+            html += "<label>" + label + "</label>";
+            html += "<span class='slider-value' id='" + id + "-value'>";
+            html += String(value);
+            html += "</span>";
+            html += "</div>";
+            html += "<input type='range' class='styled-slider' name='" + id + "'";
+            html += " min='" + String(minVal) + "'";
+            html += " max='" + String(maxVal) + "'";
+            html += " value='" + String(value) + "'";
+            html += " oninput=\"updateSlider('" + id + "')\">";
+            html += "</div>";
+    
+            htmlContent = new char[html.length() + 1];
+            strcpy(htmlContent, html.c_str());
+        }
+    
+        static const char* getSliderCssJs(){    
+                return R"(
+        <style>
+        .slider-panel {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .styled-slider {
+            width: 100%;
+            height: 6px;
+            background: #ddd;
+            border-radius: 3px;
+        }
+    </style>
+    <script>
+        function updateSlider(id) {
+        var slider = document.querySelector('input[name="' + id + '"]');
+        var display = document.getElementById(id + '-value');
+        if (slider && display) {
+            display.textContent = slider.value;
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/slider?id=' + id + '&value=' + slider.value, true);
+            xhr.send();
+        }
+    }
+    </script>
+    )"; }
+        
+    };
+    WiFiManager * SliderControlV::_wm = nullptr;
+    std::vector<SliderControlV *> SliderControlV::list = {};
+    
+    
+
+    
+// class SliderControlI {
+
 // public:
-//     // Конструктор с настройками
-//     SliderControlV1(const char* id, const char* label, uint8_t value = 50, 
-//                  uint8_t min = 0, uint8_t max = 100)
+//     using ValueChangedCallback = std::function<void(uint8_t value)>;
+    
+//     SliderControlI(const String& id, const String& label, 
+//                 uint8_t value = 50, 
+//                 uint8_t min = 0, 
+//                 uint8_t max = 100)
 //         : id(id), label(label), value(value), minVal(min), maxVal(max) {
+//         // list.push_back(this);   
 //         buildHTML();
 //     }
 
-//     // Получение HTML для вставки
-//     const char* getHTML() const { return htmlContent; }
+//     ~SliderControlI(){
+//         delete[] htmlContent;
+//         // list.erase(
+//         //     std::remove(list.begin(), list.end(), this),
+//         //     list.end()
+//         // );
+//         // if ( list.empty() ) std::vector<SliderControl *>().swap(list);
+//     };
 
-//     // Получение значения после отправки формы
-//     uint8_t getValue(WiFiManager* wm) const {
-//         String val = wm->server->arg(id);
+//     void setCallback(ValueChangedCallback callback) {
+//         this->callback = callback;
+//     }
+
+//     const char* getHTML() const {
+//         return htmlContent;
+//     }
+
+//     uint8_t getValue() const {
+//         String val = _wm->server->arg(id);
 //         return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
 //     }
-
 //     // Статический метод для добавления CSS/JS
-//     static void setupStyle(WiFiManager& wm) {
-//         wm.setCustomHeadElement(getStyleCSS());
+//     static bool init(WiFiManager& wm, std::initializer_list<SliderControlI *> _list) {
+//         list = _list;
+//         if ( _wm != nullptr ){
+//             if( _wm != &wm ) return false;
+//             else return true;
+//         }
+//         _wm = &wm;
+//         wm.setCustomHeadElement(getSliderCssJs());
+//         return true;    
 //     }
 
+//      static void webServerCallback(){
+//         if (_wm->server->hasArg("id") && _wm->server->hasArg("value")) {
+//             String id = _wm->server->arg("id");
+//             uint8_t value = _wm->server->arg("value").toInt();
+//             bool isValidId = false;
+//             for( auto slider : list) {
+//                 if ( id.equals( slider->id)) {
+//                     isValidId = true;
+//                     slider->callback(value);
+//                     break;
+//                 }
+//             }
+//             if( isValidId )
+//                 _wm->server->send(200, "text/plain", "OK");
+//             else
+//                 _wm->server->send(404, "text/plain", "Wrong parameter");
+//         } else {
+//             _wm->server->send(400, "text/plain", "Bad Request");
+//         }
+//     }
+
+//     static void addWebServerCallback(){
+//         assert(_wm && "Call SliderControl::init(WiFiManager&) first" );
+//         _wm->setWebServerCallback( [](){
+//             _wm->server->on( _httpPath(), webServerCallback); }
+//         );
+//     };
+
+
+//     void process() {
+//         if (_wm->server->hasArg(id)) {
+//             uint8_t newValue = constrain(_wm->server->arg(id).toInt(), minVal, maxVal);
+//             if (callback && newValue != lastValue) {
+//                 callback( newValue);
+//                 lastValue = newValue;
+//             }
+//         }
+//     }
+    
+    
 // private:
-//     const char* id;
-//     const char* label;
+//     String id;
+//     String label;
 //     uint8_t value;
 //     uint8_t minVal;
 //     uint8_t maxVal;
+//     uint8_t lastValue = 0;
 //     char* htmlContent = nullptr;
+//     ValueChangedCallback callback = nullptr;
+//     static std::initializer_list<SliderControlI *> list;
+    
+//     static WiFiManager * _wm;
+//     static const char* _httpPath(){ return R"(/slider)";};
 
 //     void buildHTML() {
 //         String html;
-//         html.reserve(350);
+//         html.reserve(400);
         
 //         html += "<div class='slider-panel'>";
-//         html +=   "<div class='slider-header'>";
-//         html +=     "<label>"; html += label; html += "</label>";
-//         html +=     "<span class='slider-value' id='"; html += id; html += "-value'>";
-//         html +=       value;
-//         html +=     "</span>";
-//         html +=   "</div>";
-//         html +=   "<input type='range' class='styled-slider' name='"; html += id; html += "'";
-//         html +=     " min='"; html += minVal;
-//         html +=     "' max='"; html += maxVal;
-//         html +=     "' value='"; html += value;
-//         html +=     "' oninput=\"updateSliderValue('"; html += id; html += "')\">";
+//         html += "<div class='slider-header'>";
+//         html += "<label>" + label + "</label>";
+//         html += "<span class='slider-value' id='" + id + "-value'>";
+//         html += String(value);
+//         html += "</span>";
+//         html += "</div>";
+//         html += "<input type='range' class='styled-slider' name='" + id + "'";
+//         html += " min='" + String(minVal) + "'";
+//         html += " max='" + String(maxVal) + "'";
+//         html += " value='" + String(value) + "'";
+//         html += " oninput=\"updateSlider('" + id + "')\">";
 //         html += "</div>";
 
 //         htmlContent = new char[html.length() + 1];
 //         strcpy(htmlContent, html.c_str());
 //     }
 
-//     static const char* getStyleCSS() {
-//         return R"(
-// <style>
-// .slider-panel {
-//     background: #f8f9fa;
-//     padding: 12px;
-//     border-radius: 8px;
-//     margin-bottom: 16px;
-//     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-// }
-// .slider-header {
-//     display: flex;
-//     justify-content: space-between;
-//     margin-bottom: 8px;
-// }
-// .slider-header label {
-//     font-weight: 500;
-//     color: #333;
-// }
-// .slider-value {
-//     font-family: monospace;
-//     font-size: 1.1em;
-// }
-// .styled-slider {
-//     width: 100%;
-//     height: 6px;
-//     background: #dee2e6;
-//     border-radius: 3px;
-//     outline: none;
-//     -webkit-appearance: none;
-// }
-// .styled-slider::-webkit-slider-thumb {
-//     -webkit-appearance: none;
-//     width: 18px;
-//     height: 18px;
-//     background: #4caf50;
-//     border-radius: 50%;
-//     cursor: pointer;
-//     transition: background 0.15s;
-// }
-// .styled-slider::-webkit-slider-thumb:hover {
-//     background: #3e8e41;
-// }
+//     static const char* getSliderCssJs(){    
+//             return R"(
+//     <style>
+//     .slider-panel {
+//         background: #f8f9fa;
+//         padding: 12px;
+//         border-radius: 8px;
+//         margin-bottom: 16px;
+//     }
+//     .slider-header {
+//         display: flex;
+//         justify-content: space-between;
+//         margin-bottom: 8px;
+//     }
+//     .styled-slider {
+//         width: 100%;
+//         height: 6px;
+//         background: #ddd;
+//         border-radius: 3px;
+//     }
 // </style>
 // <script>
-// function updateSliderValue(id) {
-//     const slider = document.querySelector(`input[name="${id}"]`);
-//     const output = document.getElementById(`${id}-value`);
-//     if(slider && output) output.textContent = slider.value;
-// }
-// </script>
-// )";
-//     }
-// };
-
-// #include <ESP8266WebServer.h>
-// #include <functional>
-
-// class SliderControlV2 {
-// public:
-//     using ValueChangedCallback = std::function<void(uint8_t newValue)>;
-    
-//     SliderControlV2(const char* id, const char* label, 
-//                 uint8_t value = 50, 
-//                 uint8_t min = 0, 
-//                 uint8_t max = 100,
-//                 ValueChangedCallback callback = nullptr)
-//         : id(id), label(label), value(value), 
-//           minVal(min), maxVal(max),
-//           callback(callback) {
-//         buildHTML();
-//     }
-    
-//     // Получение значения после отправки формы
-//     uint8_t getValue(WiFiManager* wm) const {
-//         String val = wm->server->arg(id);
-//         return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
-//     }
-//     const char* getHTML() const { return htmlContent; }
-    
-//     // Статический метод для добавления CSS/JS
-//     static void setupStyle(WiFiManager& wm) {
-//         wm.setCustomHeadElement(getStyleJS());
-//     }
-
-//     static const char* getStyleJS() {
-//         return R"(
-// <style>
-// .slider-panel {
-//     background: #f8f9fa;
-//     padding: 12px;
-//     border-radius: 8px;
-//     margin-bottom: 16px;
-// }
-// .slider-header {
-//     display: flex;
-//     justify-content: space-between;
-//     margin-bottom: 8px;
-// }
-// .styled-slider {
-//     width: 100%;
-//     height: 6px;
-//     background: #ddd;
-//     border-radius: 3px;
-// }
-// </style>
-// <script>
-// function updateSlider(id) {
-//     const slider = document.querySelector('input[name="' + id + '"]');
-//     const display = document.getElementById(id + '-value');
+//     function updateSlider(id) {
+//     var slider = document.querySelector('input[name="' + id + '"]');
+//     var display = document.getElementById(id + '-value');
 //     if (slider && display) {
 //         display.textContent = slider.value;
 //         var xhr = new XMLHttpRequest();
@@ -224,182 +371,10 @@ class SeparatorParameter : public WiFiManagerParameter {
 //     }
 // }
 // </script>
-// )";
-//     }
-
-// private:
-//     const char* id;
-//     const char* label;
-//     uint8_t value;
-//     uint8_t minVal;
-//     uint8_t maxVal;
-//     char* htmlContent = nullptr;
-//     ValueChangedCallback callback;
-
-//     void buildHTML() {
-//         String html;
-//         html.reserve(350);
-        
-//         html += "<div class='slider-panel'>";
-//         html += "<div class='slider-header'>";
-//         html += "<label>"; html += label; html += "</label>";
-//         html += "<span id='"; html += id; html += "-value'>"; 
-//         html += value; html += "</span>";
-//         html += "</div>";
-//         html += "<input type='range' class='styled-slider' name='"; 
-//         html += id; html += "'";
-//         html += " min='"; html += minVal; html += "'";
-//         html += " max='"; html += maxVal; html += "'";
-//         html += " value='"; html += value; html += "'";
-//         html += " oninput=\"updateSlider('"; html += id; html += "')\">";
-//         html += "</div>";
-
-//         htmlContent = new char[html.length() + 1];
-//         strcpy(htmlContent, html.c_str());
-//     }
+// )"; }
+    
 // };
+// WiFiManager * SliderControlI::_wm = nullptr;
+// std::initializer_list<SliderControlI *> list = {};
 
-class SliderControl {
-
-public:
-    using ValueChangedCallback = std::function<void(uint8_t value)>;
-    
-    SliderControl(const String& id, const String& label, 
-                uint8_t value = 50, 
-                uint8_t min = 0, 
-                uint8_t max = 100)
-        : id(id), label(label), value(value), minVal(min), maxVal(max) {
-        list.push_back(this);   
-        buildHTML();
-    }
-
-    void setValueChangedCallback(ValueChangedCallback callback) {
-        this->callback = callback;
-    }
-
-    const char* getCustomHTML() const {
-        return htmlContent;
-    }
-    // Получение значения после отправки формы
-    uint8_t getValue(WiFiManager* wm) const {
-        String val = wm->server->arg(id);
-        return val.length() ? constrain(val.toInt(), minVal, maxVal) : value;
-    }
-
-    // Статический метод для добавления CSS/JS
-    static void init(WiFiManager& wm) {
-        _wm = &wm;
-        wm.setCustomHeadElement(getSliderCssJs());
-    }
-
-     static void webServerCallback(){
-        assert(_wm && "Call SliderControl::init(WiFiManager) before" );
-        if (_wm->server->hasArg("id") && SliderControl::_wm->server->hasArg("value")) {
-            String id = _wm->server->arg("id");
-            uint8_t value = _wm->server->arg("value").toInt();
-            bool isValidId = false;
-            for( auto slider : list) {
-                if ( id.equals( slider->id)) {
-                    isValidId = true;
-                    slider->callback(value);
-                    break;
-                }
-            }
-            if( isValidId )
-                _wm->server->send(200, "text/plain", "OK");
-            else
-                _wm->server->send(404, "text/plain", "Wrong parameter");
-        } else {
-            _wm->server->send(400, "text/plain", "Bad Request");
-        }
-    }
-    static void addWebServerCallback(){
-        assert(_wm && "Call SliderControl::setWiFiManager(WiFiManager&) before" );
-        _wm->server->on( httpPath(), HTTP_GET, SliderControl::webServerCallback);
-    };
-
-
-    void process() {
-        if (_wm->server->hasArg(id)) {
-            uint8_t newValue = constrain(_wm->server->arg(id).toInt(), minVal, maxVal);
-            if (callback && newValue != lastValue) {
-                callback( newValue);
-                lastValue = newValue;
-            }
-        }
-    }
-
-    static const char* httpPath(){ return R"(/slider)";};
-private:
-    String id;
-    String label;
-    uint8_t value;
-    uint8_t minVal;
-    uint8_t maxVal;
-    uint8_t lastValue = 0;
-    char* htmlContent = nullptr;
-    ValueChangedCallback callback = nullptr;
-    static std::vector<SliderControl *> list;
-    static WiFiManager * _wm;
-
-    void buildHTML() {
-        String html;
-        html.reserve(400);
-        
-        html += "<div class='slider-panel'>";
-        html += "<div class='slider-header'>";
-        html += "<label>" + label + "</label>";
-        html += "<span class='slider-value' id='" + id + "-value'>";
-        html += String(value);
-        html += "</span>";
-        html += "</div>";
-        html += "<input type='range' class='styled-slider' name='" + id + "'";
-        html += " min='" + String(minVal) + "'";
-        html += " max='" + String(maxVal) + "'";
-        html += " value='" + String(value) + "'";
-        html += " oninput=\"updateSlider('" + id + "')\">";
-        html += "</div>";
-
-        htmlContent = new char[html.length() + 1];
-        strcpy(htmlContent, html.c_str());
-    }
-
-    static const char* getSliderCssJs(){    
-            return R"(
-    <style>
-    .slider-panel {
-        background: #f8f9fa;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 16px;
-    }
-    .slider-header {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 8px;
-    }
-    .styled-slider {
-        width: 100%;
-        height: 6px;
-        background: #ddd;
-        border-radius: 3px;
-    }
-</style>
-<script>
-    function updateSlider(id) {
-    var slider = document.querySelector('input[name="' + id + '"]');
-    var display = document.getElementById(id + '-value');
-    if (slider && display) {
-        display.textContent = slider.value;
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', '/slider?id=' + id + '&value=' + slider.value, true);
-        xhr.send();
-    }
-}
-</script>
-)"; }
-    
-};
-WiFiManager * SliderControl::_wm = nullptr;
-std::vector<SliderControl *> SliderControl::list = {};
 

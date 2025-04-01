@@ -54,6 +54,32 @@ namespace  TimeUtils {
         setGMTTime(now);
     };
 
+    const char * toStr(char * buf, const tm * _tm, const char separator=':', bool spaceBeforeHour=false){
+        sprintf(buf,"%s%2u%c%02u", ( spaceBeforeHour && _tm->tm_hour <10 )? " ": "", _tm->tm_hour, separator, _tm->tm_min);
+        return buf;
+    };
+    const char * toStr(char * buf, const time_t * t = nullptr, const char separator=':', bool spaceBeforeHour=false){
+        time_t _t =  t ? *t : time(nullptr);
+        auto _tm = localtime( &_t);
+        return toStr(buf, _tm, separator, spaceBeforeHour );
+    };
+    
+    String toString(const tm * _tm, const char separator=':', bool spaceBeforeHour=false){
+        String out;
+        if ( spaceBeforeHour && _tm->tm_hour<10 ) out += ' ';
+        out += _tm->tm_hour;
+        out += separator;
+        if ( _tm->tm_min <10 ) out += '0';
+        out += _tm->tm_min;
+        return out;
+    };
+
+    String toString(const time_t * t = nullptr, const char separator=':', bool spaceBeforeHour=false){
+        String out;
+        auto now = time(nullptr);
+        auto _tm = localtime(t ? t : &now);
+        return toString( _tm, separator, spaceBeforeHour);
+    };
 
     bool printTo(Adafruit_PCD8544& display){
         static int lastPrint = -1;
@@ -68,15 +94,13 @@ namespace  TimeUtils {
             display.clearDisplay();
             display.setCursor(10,0);
             display.setTextSize(2);
-            if ( nowTm->tm_hour < 10 ) display.print(" ");
-            display.print( nowTm->tm_hour);
-            if ( nowTm->tm_sec % 2 == 0 )
-                display.print(":");
-            else
-            display.print(" ");
-            if ( nowTm->tm_min < 10 ) display.print("0");
-            display.println( nowTm->tm_min);
-            //display.display();
+            // display.println( toString(
+            //     nowTm, (nowTm->tm_sec % 2) ? ' ' : ':', true));
+            char timeBuf[6] = {0};
+            display.println(
+                toStr(
+                    timeBuf, nowTm, (nowTm->tm_sec % 2) ? ' ' : ':', true)
+                );
             return true;
         }
         return false;

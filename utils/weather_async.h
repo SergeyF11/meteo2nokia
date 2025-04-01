@@ -12,6 +12,8 @@
 #include "display_utils.h"
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
+#include <partialHash32.h>
+
 
 #define POINT_STOP_WEATHER
 
@@ -46,25 +48,46 @@ namespace Weather {
     };
 
     const uint8_t* getIconByCode(const char* code) {
+        auto codeH = Hash32::hash(code);
+        switch(codeH){
+            case "01d"_h:  return Icons::icon_0_1;
+            case "01n"_h:  return Icons::icon_2_2;
+            case "02d"_h:  return Icons::icon_0_2;
+            case "02n"_h:  return Icons::icon_0_3;
+            case "03d"_h:  return Icons::icon_0_0;
+            case "03n"_h:  return Icons::icon_0_0;
+            case "04d"_h:  return Icons::icon_0_0;
+            case "04n"_h:  return Icons::icon_0_0;
+            case "09d"_h:  return Icons::icon_1_1;
+            case "09n"_h:  return Icons::icon_1_1;
+            case "10d"_h:  return Icons::icon_0_4;
+            case "10n"_h:  return Icons::icon_1_4;
+            case "11d"_h:  return Icons::icon_1_0;
+            case "11n"_h:  return Icons::icon_1_0;
+            case "13d"_h:  return Icons::icon_1_2;
+            case "13n"_h:  return Icons::icon_1_2;
+            case "50d"_h:  return Icons::icon_2_1;
+            case "50n"_h:  return Icons::icon_2_1;
+        }
         // Сравниваем код и возвращаем указатель на соответствующую иконку
-        if (strcmp(code, "01d") == 0) return Icons::icon_0_1;
-        if (strcmp(code, "01n") == 0) return Icons::icon_2_2;
-        if (strcmp(code, "02d") == 0) return Icons::icon_0_2;
-        if (strcmp(code, "02n") == 0) return Icons::icon_0_3;
-        if (strcmp(code, "03d") == 0) return Icons::icon_0_0;
-        if (strcmp(code, "03n") == 0) return Icons::icon_0_0;
-        if (strcmp(code, "04d") == 0) return Icons::icon_0_0;
-        if (strcmp(code, "04n") == 0) return Icons::icon_0_0;
-        if (strcmp(code, "09d") == 0) return Icons::icon_1_1;
-        if (strcmp(code, "09n") == 0) return Icons::icon_1_1;
-        if (strcmp(code, "10d") == 0) return Icons::icon_0_4;
-        if (strcmp(code, "10n") == 0) return Icons::icon_1_4;
-        if (strcmp(code, "11d") == 0) return Icons::icon_1_0;
-        if (strcmp(code, "11n") == 0) return Icons::icon_1_0;
-        if (strcmp(code, "13d") == 0) return Icons::icon_1_2;
-        if (strcmp(code, "13n") == 0) return Icons::icon_1_2;
-        if (strcmp(code, "50d") == 0) return Icons::icon_2_1;
-        if (strcmp(code, "50n") == 0) return Icons::icon_2_1;
+        // if (strcmp(code, "01d") == 0) return Icons::icon_0_1;
+        // if (strcmp(code, "01n") == 0) return Icons::icon_2_2;
+        // if (strcmp(code, "02d") == 0) return Icons::icon_0_2;
+        // if (strcmp(code, "02n") == 0) return Icons::icon_0_3;
+        // if (strcmp(code, "03d") == 0) return Icons::icon_0_0;
+        // if (strcmp(code, "03n") == 0) return Icons::icon_0_0;
+        // if (strcmp(code, "04d") == 0) return Icons::icon_0_0;
+        // if (strcmp(code, "04n") == 0) return Icons::icon_0_0;
+        // if (strcmp(code, "09d") == 0) return Icons::icon_1_1;
+        // if (strcmp(code, "09n") == 0) return Icons::icon_1_1;
+        // if (strcmp(code, "10d") == 0) return Icons::icon_0_4;
+        // if (strcmp(code, "10n") == 0) return Icons::icon_1_4;
+        // if (strcmp(code, "11d") == 0) return Icons::icon_1_0;
+        // if (strcmp(code, "11n") == 0) return Icons::icon_1_0;
+        // if (strcmp(code, "13d") == 0) return Icons::icon_1_2;
+        // if (strcmp(code, "13n") == 0) return Icons::icon_1_2;
+        // if (strcmp(code, "50d") == 0) return Icons::icon_2_1;
+        // if (strcmp(code, "50n") == 0) return Icons::icon_2_1;
 
         // Если код не найден, возвращаем nullptr или иконку по умолчанию
         return nullptr;
@@ -80,6 +103,7 @@ namespace Weather {
     };
 
     static Data data;
+    static time_t updatedTime = 0;
 
     const char apiUrl[] PROGMEM = "http://api.openweathermap.org/data/2.5/weather?";
 
@@ -99,7 +123,7 @@ namespace Weather {
                 auto updated = deserializeJson(doc, payload);
 
                 if (updated.code() == DeserializationError::Ok) {
-                     
+                    Weather::updatedTime = time(nullptr);
                     String iconCode = doc["weather"][0]["icon"].as<String>();
                     strcpy(Weather::data.iconCode, iconCode.c_str());
 
@@ -151,18 +175,7 @@ namespace Weather {
 
     bool waitConnection = false;
     AsyncRequest::Error updateData() {
-        // if (!WiFi.isConnected()) {
-        //     WiFi.mode(WIFI_STA);
-        //     delay(50);
-        //     if( WiFi.begin()){
-        //         pointStop(0, "Wait connection...\n");
-        //         WiFi.waitForConnectResult(10000);
-        //     } else {
-        //         pointStop(0, "Can't to begin WiFi\n");
-        //     }
-        //     ///connectToWiFi();
-        //     //Reconnect::connect();
-        // }
+
         if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
 
          
@@ -242,7 +255,7 @@ namespace Weather {
         display.setTextSize(2);
         String str(data.temp, 0);
         str += 'C';
-        Display::printRightAdjast(display, str, 2, 7);
+        Display::printRightAdjast(display, str, 2, 8);
 
         str = String(data.humidity, 0);
         str += '%';
@@ -271,10 +284,26 @@ namespace Weather {
         Display::printRightAdjast(display, String(char(0xAD))); // антенна
     };
 
+    void printUpdateStatus(Adafruit_PCD8544& display, bool wifi) {
+        display.setCursor(0, 0);
+        if ( wifi ) Display::printRightAdjast(display, String(char(0xAD))); // антенна
+        else {
+            // String updatedTimeS;
+            // auto ut = localtime( &updatedTime);
+            // updatedTimeS += ut->tm_hour;
+            // updatedTimeS += ':';
+            // updatedTimeS += ut->tm_min;
+            // Display::printRightAdjast(display, updatedTimeS);
+            char buf[6] = {0};
+            Display::printRightAdjast(display, TimeUtils::toStr(buf));//TimeUtils::toString(&updatedTime));
+        }
+    };
+
     void update(Adafruit_PCD8544& display, bool wifi = false) {
         auto icon = Weather::getIconByCode(Weather::data.iconCode);
         Weather::drawIcon(display, icon, Icons::width, Icons::height);
-        if (wifi) Weather::printWifiOn(display);
+        //if (wifi) Weather::printWifiOn(display);
+        printUpdateStatus(display, wifi);
         Weather::printData(display, data, true);
     };
 
@@ -301,7 +330,9 @@ namespace Weather {
               updateState = AsyncRequest::State::FailRespond;
           } 
           //if ( waitConnection)
-            break;
+          // ответа ещё нет !!!
+          updateState = AsyncRequest::State::RespondWaiting;
+          break;
 
         case AsyncRequest::State::FailRespond:
         case AsyncRequest::State::SuccessRespond:
