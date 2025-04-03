@@ -17,8 +17,8 @@ WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key",
 WiFiManagerParameter geolocationApiKeyParam;
 
 
-SliderControlV *contrD1;
-SliderControlV *contrD2;
+SliderControl *contrD1;
+SliderControl *contrD2;
 
 //#define POINT_STOP_WIFI
 
@@ -103,11 +103,11 @@ namespace CaptivePortal
     pointStop(0, "Try to set WiFiManager to sliders\n");
 
   // Добавляем параметры контраста
-    SliderControlV::init( wm );
+    SliderControl::init( wm );
 
     pointStop(0, "Try to create sliders\n");
-    contrD1 = new SliderControlV( "d1ctr", "дисплей погоды", loadedData.getContrast1(), 30, 90 );
-    contrD2 = new SliderControlV( "d2ctr", "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
+    contrD1 = new SliderControl( "d1ctr", "дисплей погоды", loadedData.getContrast1(), 30, 90 );
+    contrD2 = new SliderControl( "d2ctr", "дисплей часы/датчик", loadedData.getContrast2(), 30, 90 );
     contrD1->setCallback([](uint8_t c){ 
       pointStop(0,"Display 1 set contrast=%u\n", c);
       display1.setContrast(c); });
@@ -131,7 +131,7 @@ namespace CaptivePortal
     
     pointStop(0, "Add handler\n");
     //SliderControlI::init(wm, {contrD1, contrD2});
-    SliderControlV::addWebServerCallback( );
+    SliderControl::addWebServerCallback( );
 
         
     wm.setSaveParamsCallback(saveParamsCallback);
