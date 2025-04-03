@@ -31,23 +31,52 @@
 extern GeoLocation::GeoData myLocation;
 extern unsigned long weatherUpdateInterval;
 #include "ticker.h"
-extern SimpleTicker weatherTick;
+extern RefresherTicker weatherTick;
 
 namespace Weather {
-    String getLang(GeoLocation::GeoData& location);
-    // enum StateUpdate {
-    //     Unknown,
-    //     UpdateRunning,
-    //     Updated,
-    //     FailUpdate,
+    // struct IconPtr {
+    //     uint8_t code;
+    //     bool isDay;
     // };
-    AsyncRequest::State updateState = AsyncRequest::Unknown;
+    // //const uint
+    // constexpr IconPtr Decode(const char * codeStr){
+    //     constexpr uint8_t code = (10*codeStr[0]-'0') + (codeStr[1]-'0');
+    //     return (codeStr[2] == 'd' ) ? IconPtr{code, true} : IconPtr{code, false};  
+    // };
+    // constexpr IconPtr operator "" _decode(const char *str){
+    //     return Decode(str);
+    // }
+
+    String getLang(GeoLocation::GeoData& location);
+
+    AsyncRequest::State updateState = AsyncRequest::Idle;
 
     int hPa2MmHg(const float pressure) {
         return int(pressure * 0.750062);
     };
 
+    // const IconPtr decode(const char * codeStr){
+    //     IconPtr ptr;
+    //     char dayNight = 0;
+    //     sscanf("%02u%c", codeStr, &ptr.code, &dayNight);
+    //     ptr.isDay = ( dayNight == 'd' );
+    //     return ptr;
+    // };
+
+    // const uint8_t code2code(const char * codeStr){
+    //     auto ptr = decode(codeStr);
+    //     return ptr.isDay ? ptr.code : 100U+ptr.code;
+    // };
+    // Icons::Icon getIconByCodeStr(const char* code){
+    //     auto ptr = decode(code);
+    //     switch(ptr.code){
+    //         case "01d"_decode.code: return Icons::icon_0_1;
+    //         case "01n"_decode.code: return Icons::icon_2_2;
+    //     }
+    // };
+
     const uint8_t* getIconByCode(const char* code) {
+    // Icons::Icon getIconByCode(const char* code) {
         auto codeH = Hash32::hash(code);
         switch(codeH){
             case "01d"_h:  return Icons::icon_0_1;
@@ -307,10 +336,10 @@ namespace Weather {
         Weather::printData(display, data, true);
     };
 
-    void updateData(Adafruit_PCD8544& display){
+    void updateDataMy(Adafruit_PCD8544& display){
 
     switch ( updateState ){
-        case AsyncRequest::Unknown:
+        case AsyncRequest::Idle:
           break;
         
         case AsyncRequest::WaitWiFiConnection:
@@ -341,7 +370,7 @@ namespace Weather {
           //WiFi.mode(WIFI_OFF);
           Serial.println("WiFi disconnect and off");
           update(display);
-          updateState = AsyncRequest::State::Unknown;
+          updateState = AsyncRequest::State::Idle;
           break;
         case AsyncRequest::State::RespondWaiting:
           update(display, true);
@@ -353,4 +382,69 @@ namespace Weather {
           break;
       }
     };
+
+    void updateDataDS(Adafruit_PCD8544& display) {
+        switch (updateState) {
+            // case AsyncRequest::Idle:
+            // if ( weatherTick.refresh() ) update.display();
+            //     // Просто отображаем текущие данные
+            //     //update(display);
+            //     break;
+                
+            case AsyncRequest::WaitWiFiConnection:
+                update(display, true); // С иконкой WiFi
+                if (WiFi.isConnected()) {
+                    if (updateData() == AsyncRequest::OK) {
+                        updateState = AsyncRequest::RespondWaiting;
+                    } else {
+                        updateState = AsyncRequest::FailRespond;
+                    }
+                } else if (Reconnect::waitTimeout()) {
+                    updateState = AsyncRequest::FailRespond;
+                }
+                break;
+                
+            case AsyncRequest::RespondWaiting:
+                update(display, true); // С иконкой WiFi
+                break;
+                
+            case AsyncRequest::SuccessRespond:
+                WiFi.disconnect(true, false);
+                update(display);
+                updateState = AsyncRequest::Idle;
+                break;
+                
+            case AsyncRequest::FailRespond:
+                update(display, false);
+                if (weatherTick.tick()) {
+//////           надо проверять
+                    updateState = AsyncRequest::Idle;
+                    weatherTick.reset(-weatherUpdateInterval);
+
+                }
+                break;
+            default:
+                if ( weatherTick.refresh() ) update(display);
+                    // Просто отображаем текущие данные
+                 
+        }
+    };
+
+    void handleTick() {
+        if (weatherTick.tick()) {
+            if (updateState == AsyncRequest::Idle) {
+                if (WiFi.isConnected()) {
+                    if (updateData() == AsyncRequest::OK) {
+                        updateState = AsyncRequest::RespondWaiting;
+                    } else {
+                        updateState = AsyncRequest::FailRespond;
+                        weatherTick.reset(wrongUpdateInterval(10 SECONDS));
+                    }
+                } else {
+                    updateState = AsyncRequest::WaitWiFiConnection;
+                    Reconnect::connect();
+                }
+            }
+        }
+    }
 }; //namespace

@@ -15,7 +15,7 @@ enum Error
 };
     
 enum State {
-    Unknown,
+    Idle,
     WaitWiFiConnection,
     RespondWaiting,
     SuccessRespond,

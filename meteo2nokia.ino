@@ -33,13 +33,13 @@ EepromData set;
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
-unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
+ unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
 unsigned long lastWeatherUpdate = 0;
 
 #include "utils/ticker.h"
 
 
-struct SimpleTicker weatherTick(weatherUpdateInterval);
+struct RefresherTicker weatherTick(weatherUpdateInterval);
 struct SimpleTicker htuSensorTick( 60 SECONDS );
 
 
@@ -150,17 +150,20 @@ void setup() {
 
 
 void loop() {
+  // вариант DS
+  Weather::handleTick();  
+  Weather::updateDataDS(display1);
+  // if ( weatherTick.tick() ){
+  //   if ( Reconnect::connect() ) {
+  //     //Weather::waitConnection = true;
+  //     Weather::updateState = AsyncRequest::WaitWiFiConnection;
+  //   } else {
+  //     weatherTick.reset( Weather::wrongUpdateInterval( 5 SECONDS ) );
+  //   }
+  // }
+  //Weather::updateDataMy(display1);
   
-  if ( weatherTick.tick() ){
-    if ( Reconnect::connect() ) {
-      //Weather::waitConnection = true;
-      Weather::updateState = AsyncRequest::WaitWiFiConnection;
-    } else {
-      weatherTick.reset( Weather::wrongUpdateInterval( 5 SECONDS ) );
-    }
-  }
-  Weather::updateData(display1);
-  
+
   
   if( TimeUtils::printTo( display2 ) ){
 
