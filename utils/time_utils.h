@@ -50,8 +50,9 @@ namespace  TimeUtils {
         setTime(now);
     };
     void inline setGMTTime(const char * str){
-        time_t now = fromHttpHeader(str);;
-        setGMTTime(now);
+        time_t now = fromHttpHeader(str);
+        if ( isSynced( now ))
+            setGMTTime(now);
     };
 
     const char * toStr(char * buf, const tm * _tm, const char separator=':', bool spaceBeforeHour=false){

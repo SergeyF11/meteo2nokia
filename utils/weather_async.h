@@ -244,7 +244,7 @@ namespace Weather {
     void drawIcon(Adafruit_PCD8544& display, const uint8_t* bitmap, const uint8_t width = 32, const uint8_t height = 32) {
         display.clearDisplay();
         if (bitmap)
-            display.drawBitmap(0, 5, bitmap, width, height, PRINT_COLOR);
+            display.drawBitmap(0, 7, bitmap, width, height, PRINT_COLOR);
     }
 
     void printRightAdjast(Adafruit_PCD8544& display, const String& str, const int textSize = 1, const int16_t _yPos = -999) {
@@ -324,7 +324,7 @@ namespace Weather {
             // updatedTimeS += ut->tm_min;
             // Display::printRightAdjast(display, updatedTimeS);
             char buf[6] = {0};
-            Display::printRightAdjast(display, TimeUtils::toStr(buf));//TimeUtils::toString(&updatedTime));
+            Display::printRightAdjast(display, TimeUtils::toStr(buf, &updatedTime ));//TimeUtils::toString(&updatedTime));
         }
     };
 
