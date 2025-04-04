@@ -41,7 +41,7 @@ volatile bool isSettingsValid = false;
 MultiResetDetector tripleReset;
 
 // Глобальные переменные для хранения настроек
-extern EepromData set;
+extern EepromData eepromSets;
 
 namespace CaptivePortal
 {
@@ -51,11 +51,11 @@ namespace CaptivePortal
   void saveParamsCallback()
   {
 
-    isSettingsValid = set.init(
+    isSettingsValid = eepromSets.init(
                 openWeatherApiKeyParam.getValue(),
                 geolocationApiKeyParam.getValue(),
                 contrD1->getValue(), contrD2->getValue()) &&
-                set.save();
+                eepromSets.save();
 
     if ( ! isSettingsValid ){
       Serial.println("error: save eeprom");
@@ -63,8 +63,8 @@ namespace CaptivePortal
                     strlen(openWeatherApiKeyParam.getValue()),
                     openWeatherApiKeyParam.getValue());
       Serial.printf("Len %d, value '%s', %s",
-                    strlen(set.getWeatherKey()),
-                    set.getWeatherKey(), set.valid() ? "valid" : "invalid");
+                    strlen(eepromSets.getWeatherKey()),
+                    eepromSets.getWeatherKey(), eepromSets.valid() ? "valid" : "invalid");
     }
   };
 
@@ -239,36 +239,24 @@ namespace Reconnect
 void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
 {
 
-
-  printDots(display, icon_wifi, 2);
+  printDots(display, WiFi_Icon::_bmp, 2);
   if (!WiFi.isConnected())
   {
     Reconnect::connect();
     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
     {
       delay(10);
+      each(500, printDots(display, WiFi_Icon::_bmp, 2));
     }
   }
 
   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
   { //}, "atheration")){
     Serial.println("connected...");
-  }
-  else
-  {
+  } else  {
     // needExitConfigPortal = false;
     Serial.println("Config portal running");
-    // wm.startConfigPortal(CaptivePortal::name);
-    //  if ( ! wm.getConfigPortalActive()  ){
-    //    Serial.println("Retart portal on demand");
-    //    wm.startConfigPortal(CaptivePortal::name);
-    //  }
-    //  if ( tripleReset ){
-    //    wm.setAPCallback([](WiFiManager* wm) {
-    //      tripleReset = MultyReset::reset();
-    //      Serial.println("Config portal started");
-    //  });
-    //  }
+
     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
     {
       if (!wm.getConfigPortalActive())
@@ -276,7 +264,7 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
         if (tripleReset.isTriggered())
         {
           static bool resetTriple = false;
-          ;
+          
           if (resetTriple)
             tripleReset.clearTrigger();
           else
@@ -290,7 +278,7 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
       {
         pointStop(0, "Status changed\n");
       }
-      each(500, printDots(display, icon_wifi, 2));
+      each(500, printDots(display, WiFi_Icon::_bmp, 2));
     }
 
     pointStop(0, "Key is %s and WiFi is %s\n",

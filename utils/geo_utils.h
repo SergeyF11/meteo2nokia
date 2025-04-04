@@ -506,8 +506,8 @@ namespace GeoLocation
         Request::Error err = Request::Error::ErrorData;
         // if ( Key::has() ){
         //     err = getLocation_IpGeo(data, Key::get() );
-        if ( set.getGeoKey() != nullptr ){
-            err = getLocation_IpGeo(data, set.getGeoKey() );
+        if ( eepromSets.getGeoKey() != nullptr ){
+            err = getLocation_IpGeo(data, eepromSets.getGeoKey() );
         }
 
         if ( err != Request::Error::OK ) {

@@ -7,7 +7,7 @@
 // #include "FontsRus/FreeMonoBold12.h"
 #include "eeprom_utils.h"
 
-extern EepromData set;
+extern EepromData eepromSets;
 
 /* Recode russian fonts from UTF-8 to Windows-1251 */
 char *utf8rusTo(const String &source, char *target, const int maxString)
@@ -125,9 +125,9 @@ String utf8rus(const String &source)
 // Функция для применения настроек контраста к дисплеям
 void applyDisplayContrast(Adafruit_PCD8544 &display1, Adafruit_PCD8544 &display2)
 {
-  display1.setContrast(set.getContrast1());
-  display2.setContrast(set.getContrast2());
-  Serial.printf("Applied contrast: Display1=%d, Display2=%d\n", set.getContrast1(), set.getContrast2());
+  display1.setContrast(eepromSets.getContrast1());
+  display2.setContrast(eepromSets.getContrast2());
+  Serial.printf("Applied contrast: Display1=%d, Display2=%d\n", eepromSets.getContrast1(), eepromSets.getContrast2());
 }
 
 struct FontSize
@@ -140,7 +140,7 @@ FontSize fromSize(const int textSize)
   return FontSize{6 * textSize, 8 * textSize};
 };
 
-void printDots(Adafruit_PCD8544 &display, const byte *icon = icon_wifi, const int textSize = 2)
+void printDots(Adafruit_PCD8544 &display, const byte *icon = WiFi_Icon::_bmp, const int textSize = 2)
 {
 
   static int dots = 0;        // Счетчик точек
@@ -149,7 +149,10 @@ void printDots(Adafruit_PCD8544 &display, const byte *icon = icon_wifi, const in
   const char space = ' ';     // Символ пробела
 
   display.clearDisplay();
-  display.drawBitmap(10, 1, icon, 64, 52, 1); // Отрисовка иконки
+  const int alignCenterX = (display.width()-WiFi_Icon::width)/2;
+  //const int alignCenterY = ( display.height() - WiFi_Icon::height)/2;
+
+  display.drawBitmap(alignCenterX, 2, icon, WiFi_Icon::width, WiFi_Icon::height, 1); // Отрисовка иконки
 
   display.setTextSize(textSize);          // Установка размера текста
   FontSize fontSize = fromSize(textSize); // Получение размера шрифта
@@ -183,7 +186,7 @@ void printDots(Adafruit_PCD8544 &display, const byte *icon = icon_wifi, const in
   display.display(); // Обновление дисплея
 };
 
-void inline printDots(Adafruit_PCD8544 *display, const byte *icon = icon_wifi, const int textSize = 2)
+void inline printDots(Adafruit_PCD8544 *display, const byte *icon =  WiFi_Icon::_bmp, const int textSize = 2)
 {
   if (display != nullptr)
     printDots(*display, icon, textSize);

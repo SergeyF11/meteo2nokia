@@ -42,10 +42,10 @@ struct RefresherTicker : SimpleTicker {
   { 
     lastRefresh = lastTick; 
   };
-  void reset(const unsigned long ms=0)  {
-    SimpleTicker::reset(ms);
-    lastRefresh = lastTick;
-  };
+  // void reset(const unsigned long ms=0)  {
+  //   SimpleTicker::reset(ms);
+  //   //lastRefresh = lastTick;
+  // };
   bool needsRefresh() const {
     return (millis() - lastRefresh) >= refreshInterval;
   };

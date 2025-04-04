@@ -19,6 +19,8 @@ tm* nowTm;
 
 //const String units = "metric"; // Используйте "imperial" для Фаренгейта
 #define SECONDS *1000
+#define MINUTES *60 SECONDS
+#define HOURS *60 MINUTES
 #include "utils/weather_async.h" 
 #include "utils/wifi_utils.h"
 #include "utils/geo_utils.h"
@@ -28,12 +30,14 @@ tm* nowTm;
 #include "utils/tz_utils.h"
 
 // Глобальные переменные для хранения настроек в eeprom и в программе
-EepromData set;
+EepromData eepromSets;
 
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
- unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
+constexpr unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
+#define UPDATE_NOW -weatherUpdateInterval
+
 unsigned long lastWeatherUpdate = 0;
 
 #include "utils/ticker.h"
@@ -65,7 +69,7 @@ void setup() {
   Serial.begin(115200);
 
   // load settings from EEPROM 0
-  isSettingsValid = set.load();
+  isSettingsValid = eepromSets.load();
   configTime( 0,0, NTP_SERVERS);
   
   // Инициализация экранов
@@ -119,8 +123,8 @@ void setup() {
   // displayContrast1 = loadedData.getContrast1();
   // displayContrast2 = loadedData.getContrast2();
 
-  displays::setContrast(set.getContrast1(), set.getContrast2(), &Serial);
-  CaptivePortal::init(set);
+  displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2(), &Serial);
+  CaptivePortal::init(eepromSets);
 
   // Подключение к Wi-Fi
   connectToWiFi(&display1);
@@ -143,7 +147,7 @@ void setup() {
     } 
   }
 
-  displays::setContrast(set.getContrast1(), set.getContrast2());
+  displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2());
   weatherTick.reset( -weatherUpdateInterval );
 
 }
