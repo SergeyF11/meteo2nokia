@@ -215,8 +215,8 @@ namespace Reconnect
   };
 
   static unsigned long start;
-  static unsigned long timeout = 3000UL;
-  bool inline waitTimeout() { return (millis() - start > timeout); };
+  static unsigned long timeout = 5000UL;
+  bool inline waitTimeout() { return (millis() - start) > timeout; };
 
   bool connect(unsigned long _timeout = 0)
   {
@@ -224,7 +224,7 @@ namespace Reconnect
       return true;
     if (!WiFi.mode(WIFI_STA))
       return false;
-    if (_timeout)
+    if (_timeout != 0 )
       timeout = _timeout;
 
     pointStop(0, "Start\n");

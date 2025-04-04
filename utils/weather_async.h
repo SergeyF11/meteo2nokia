@@ -123,7 +123,7 @@ namespace Weather {
     };
 
     struct Data {
-        char iconCode[16] = {0};
+        char iconCode[4] = {0};
         char cityName[128] = {0};
         int timeZone = 0;
         float temp = 0, tempFeel = 0;
@@ -153,9 +153,9 @@ namespace Weather {
 
                 if (updated.code() == DeserializationError::Ok) {
                     Weather::updatedTime = time(nullptr);
-                    String iconCode = doc["weather"][0]["icon"].as<String>();
-                    strcpy(Weather::data.iconCode, iconCode.c_str());
-
+                    // String iconCode = doc["weather"][0]["icon"].as<String>();
+                    // strcpy(Weather::data.iconCode, iconCode.c_str());
+                    strncpy(Weather::data.iconCode, doc["weather"][0]["icon"], sizeof(data.iconCode));
                     Weather::data.temp = doc["main"]["temp"].as<float>();
                     Weather::data.tempFeel = doc["main"]["feels_like"].as<float>();
                     Weather::data.humidity = doc["main"]["humidity"].as<float>();
@@ -178,7 +178,7 @@ namespace Weather {
                     Serial.printf("City name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
                 } else {
                     updateState = AsyncRequest::WrongPayload;
-                    Serial.println("Error: updated weather data");
+                    Serial.println("Error: wrong weather data JSON");
                 }
             } else {
                 updateState = AsyncRequest::FailRespond;
@@ -234,8 +234,10 @@ namespace Weather {
             if ( request.send() ) {
                 updateState = AsyncRequest::RespondWaiting;
                 return AsyncRequest::OK;
+            } else { 
+                pointStop(0,"Error: [%d] %s\n", request.responseHTTPcode(), request.responseHTTPString());   
+                return AsyncRequest::Error::WrongRequest; 
             }
-            else return AsyncRequest::Error::WrongRequest;;
         }
 
         return AsyncRequest::SendedAlready;
@@ -303,8 +305,9 @@ namespace Weather {
     };
 
     unsigned long wrongUpdateInterval(unsigned int renewMs) {
-        auto newSet = millis() - (weatherUpdateInterval - renewMs);
-        pointStop(0,"current=%lu, new set=%lu\n", millis(), newSet);
+        auto nowMs = millis();
+        auto newSet = nowMs - (weatherUpdateInterval - renewMs);
+        pointStop(0,"current=%lu, new set=%lu\n", nowMs, newSet);
         return newSet;
     };
 
@@ -400,6 +403,8 @@ namespace Weather {
                         updateState = AsyncRequest::FailRespond;
                     }
                 } else if (Reconnect::waitTimeout()) {
+                    
+                    weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
                     updateState = AsyncRequest::FailRespond;
                 }
                 break;
@@ -416,12 +421,14 @@ namespace Weather {
                 
             case AsyncRequest::FailRespond:
                 update(display, false);
-                if (weatherTick.tick()) {
-//////           надо проверять
-                    updateState = AsyncRequest::Idle;
-                    weatherTick.reset(-weatherUpdateInterval);
+                weatherTick.reset( wrongUpdateInterval((5U*60*1000)));
+                updateState = AsyncRequest::Idle;
+//                 if (weatherTick.tick()) {
+// //////           надо проверять
+//                     updateState = AsyncRequest::Idle;
+//                     weatherTick.reset(-weatherUpdateInterval);
 
-                }
+//                 }
                 break;
             default:
                 if ( weatherTick.refresh() ) update(display);
@@ -442,8 +449,10 @@ namespace Weather {
                     }
                 } else {
                     updateState = AsyncRequest::WaitWiFiConnection;
-                    Reconnect::connect();
+                    Reconnect::connect(5000);
                 }
+            } else {    // not Idle ?
+
             }
         }
     }
