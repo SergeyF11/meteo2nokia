@@ -114,7 +114,7 @@ void printData(Adafruit_PCD8544& display, bool clear=false){
         hum = String(humidity, 0);
         hum += '%';
       } //else display.print("na");
-    Display::printRightAdjast(display, hum,2);
+    Display::printRightAdjast(display, hum, 2);
       
     }
     // домик

@@ -29,6 +29,7 @@ tm* nowTm;
 #include "utils/time_utils.h"
 #include "utils/tz_utils.h"
 
+
 // Глобальные переменные для хранения настроек в eeprom и в программе
 EepromData eepromSets;
 
@@ -85,6 +86,8 @@ void setup() {
 
   // TestChars::setDelay(1000);
   // TestChars::run(display1, 2);
+  BigSign::test(display1);
+  pointStop(10000,"Test done\n");
 
 
   Wire.begin(SDA, SCL);

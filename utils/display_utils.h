@@ -6,6 +6,7 @@
 // #include "FontsRus/FreeMonoBold6.h"
 // #include "FontsRus/FreeMonoBold12.h"
 #include "eeprom_utils.h"
+#include "icons_sign.h"
 
 extern EepromData eepromSets;
 
@@ -311,8 +312,29 @@ namespace Display
     auto yPos = (_yPos == -10000) ? display.getCursorY() : _yPos;
     display.setCursor(
         rightAdjast(display, str, textSize), yPos);
+
     display.setTextSize(textSize);
-    display.print(str);
+    if( textSize == 2 ){  
+      auto endPtr = str.length()-1;
+      auto endChar = str.charAt(endPtr);
+
+      Serial.printf("String=%s\n", str.c_str() );
+
+      if( endChar == 'C' || endChar == '%'){
+
+        Serial.printf("End char='%c'\n", endChar );
+
+        display.print(str.substring(0, endPtr));
+
+        Serial.printf("Print str='%s'\n", str.substring(0, endPtr).c_str() );
+        delay(1000);
+        Serial.printf("Print char='%c'\n", endChar == 'C' ? 'C' : '%' );
+
+        BigSign::print(display, endChar == 'C' ? BigSign::_celsium : BigSign::_percent );
+        return;
+    }
+  }
+      display.print(str);
   };
 
  
