@@ -5,6 +5,8 @@
 #include "time_utils.h"
 #include "wifi_utils.h"
 
+extern AsyncHttpsClient httpsClient;
+
 #define TX_OFFSET_INVALID 99999
 
 bool aproximateLocationAsync = true;
@@ -181,7 +183,7 @@ namespace GeoLocationAsync {
 
     class GeoRequest {
         private:
-            AsyncHttpsClient httpsClient;
+            //AsyncHttpsClient httpsClient;
             GeoData* targetData;
             const char* geoKey;
             unsigned long lastRequestTime = 0;
@@ -203,10 +205,10 @@ namespace GeoLocationAsync {
                 strlcpy(targetData->timeZone, doc["time_zone"]["name"] | "", TZSize);
                 
                 targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TX_OFFSET_INVALID;
-                targetData->latitude = doc["latitude"] | 0.0;
-                targetData->longitude = doc["longitude"] | 0.0;
+                targetData->latitude = doc["latitude"].as<float>(); // | 0.0;
+                targetData->longitude = doc["longitude"].as<float>(); // | 0.0;
                 
-                float unixTime = doc["time_zone"]["current_time_unix"] | 0.0;
+                float unixTime = doc["time_zone"]["current_time_unix"].as<float>(); // | 0.0;
                 if (!TimeUtils::isSynced() && unixTime != 0.0) {
                     targetData->unixTime = static_cast<time_t>(unixTime);
                     TimeUtils::setGMTTime(targetData->unixTime);
@@ -351,7 +353,7 @@ namespace GeoLocationAsync {
 
 
     GeoRequest geoRequester;
-    
+
     GeoData myLocation;
 
     RequestGeoAsync::Error getLocation(GeoData &data) {

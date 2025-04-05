@@ -19,10 +19,12 @@
 
 #define retryWrongUpdateMs 5000UL
 
-extern GeoLocationAsync::GeoData myLocation;
+//extern GeoLocationAsync::GeoData myLocation;
+
 extern const unsigned long weatherUpdateInterval;
 #include "ticker.h"
 extern RefresherTicker weatherTick;
+extern AsyncHttpsClient httpsClient;
 
 namespace Weather {
     const uint8_t* getIconByCode(const char* code) {
@@ -85,10 +87,10 @@ namespace Weather {
 
     static Data data;
     static time_t updatedTime = 0;
-    AsyncHttpsClient client;
+    
 
     String getLang(GeoLocationAsync::GeoData& location);
-    
+
     inline int hPa2MmHg(const float pressure) {
         return int(pressure * 0.750062);
     };
@@ -96,9 +98,9 @@ namespace Weather {
     AsyncRequest::State updateState = AsyncRequest::Idle;
 
     void onRequestComplete() {
-        if (client.getStatusCode() == 200) {
+        if (httpsClient.getStatusCode() == 200) {
             updateState = AsyncRequest::SuccessRespond;
-            String payload = client.getBody();
+            String payload = httpsClient.getBody();
             
             JsonDocument doc;
             auto updated = deserializeJson(doc, payload);
@@ -114,14 +116,17 @@ namespace Weather {
                 configTime(Weather::data.timeZone, 0, NTP_SERVERS);
 
                 String _city = doc["name"].as<String>();
-                if (getLang(myLocation).isEmpty())
+                if ( getLang(GeoLocationAsync::myLocation).isEmpty() )
                     strcpy(Weather::data.cityName, _city.c_str());
                 else
                     strcpy(Weather::data.cityName, utf8rus(_city).c_str());
                 
-                pointStop(0, "Weather data updated:\n\tDescription: %s [%s]\n",  
-                         doc["weather"][0]["description"], data.iconCode);
-                // ... остальные логи ...
+                const char * desc =  doc["weather"][0]["description"];
+                pointStop(0, "Weather data updated:\n\tDescription: %s [%s]\n",  desc, data.iconCode);
+                pointStop(0, "\n\tTemperature: %.1fC\n\tFeels like %.1fC\n", Weather::data.temp , Weather::data.tempFeel);
+                pointStop(0, "\n\tHumidity: %.0f%%\n\tPressure: %dmmHg\n",Weather::data.humidity, Weather::data.pressure);
+                pointStop(0, "\n\tCity name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
+
             } else {
                 updateState = AsyncRequest::WrongPayload;
                 Serial.println("Error: wrong weather data JSON");
@@ -129,7 +134,7 @@ namespace Weather {
         } else {
             updateState = AsyncRequest::FailRespond;
             Serial.printf("Error: HTTP request failed [%d] %s\n", 
-                         client.getStatusCode(), client.getError().c_str());
+                         httpsClient.getStatusCode(), httpsClient.getError().c_str());
         }
     };
 
@@ -153,24 +158,24 @@ namespace Weather {
 
         String requestUri("https://api.openweathermap.org/data/2.5/weather?");
 
-        if (myLocation.valid()) {
+        if (GeoLocationAsync::myLocation.valid()) {
             requestUri += "lat=";
-            requestUri += String(myLocation.latitude, 5);
+            requestUri += String(GeoLocationAsync::myLocation.latitude, 5);
             requestUri += "&lon=";
-            requestUri += String(myLocation.longitude, 5);
-            requestUri += getLang(myLocation);
+            requestUri += String(GeoLocationAsync::myLocation.longitude, 5);
+            requestUri += getLang(GeoLocationAsync::myLocation);
         } else {
             requestUri += "q=";
-            requestUri += myLocation.city;
+            requestUri += GeoLocationAsync::myLocation.city;
             requestUri += ',';
-            requestUri += myLocation.country;
+            requestUri += GeoLocationAsync::myLocation.country;
         }
         requestUri += "&units=metric&appid=";
         requestUri += eepromSets.getWeatherKey();
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
-        if (!client.isBusy()) {
-            client.get(requestUri, 
+        if (!httpsClient.isBusy()) {
+            httpsClient.get(requestUri, 
                 [](int statusCode, const String& headers) {
                     // Обработка заголовков (если нужно)
                 },
@@ -227,7 +232,7 @@ namespace Weather {
             display.print(data.cityName);
             //Display::setFontSize(display);
         }
-        else display.print(myLocation.city);
+        else display.print(GeoLocationAsync::myLocation.city);
 
         display.setTextSize(2);
         String str(data.temp, 0);
@@ -333,6 +338,7 @@ namespace Weather {
     };
 
     void updateDataDS(Adafruit_PCD8544& display) {
+        if( WiFi.isConnected() ) httpsClient.update();
         switch (updateState) {
             // case AsyncRequest::Idle:
             // if ( weatherTick.refresh() ) update.display();
@@ -401,7 +407,46 @@ namespace Weather {
                     Reconnect::connect(5000);
                 }
             }
-            client.update();
+            httpsClient.update();
         }
+    }
+
+
+    void test(){
+        String url("https://api.openweathermap.org/data/2.5/weather?lat=55.76176&lon=37.86130&lang=ru&units=metric&appid=");
+        url += eepromSets.getWeatherKey();
+        if (!httpsClient.isBusy()) {
+            Serial.println(url);
+            
+            httpsClient.get(url, 
+                [](int statusCode, const String& headers) {
+                    // Обработка заголовков (если нужно)
+                    Serial.println( statusCode);
+                },
+                [](const String& chunk) {
+                    // Обработка данных по мере поступления (если нужно)
+                },
+                onRequestComplete,
+                [](const String& error) {
+                    Serial.printf("Request error: %s\n", error.c_str());
+                    updateState = AsyncRequest::FailRespond;
+                }
+            );
+            updateState = AsyncRequest::RespondWaiting;
+            //return AsyncRequest::OK;
+        }
+        ClientState state;
+        while(1) {
+            if( state == ClientState::COMPLETE ){
+
+                Serial.println("Test done");
+                delay(10000);
+            } else {
+                state = httpsClient.update();
+            }
+
+            delay(1);
+        }
+
     }
 }; // namespace Weather

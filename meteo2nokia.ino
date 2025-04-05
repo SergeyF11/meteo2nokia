@@ -30,7 +30,7 @@ tm* nowTm;
 #include "utils/time_utils.h"
 #include "utils/tz_utils.h"
 
-
+AsyncHttpsClient httpsClient;
 // Глобальные переменные для хранения настроек в eeprom и в программе
 EepromData eepromSets;
 
@@ -67,6 +67,10 @@ float weatherHumidity = 0;
 //bool tripleReset;
 
 void setup() {
+
+  httpsClient.setInsecureMode(true);
+  httpsClient.setTimeout(3000);
+
   // Инициализация Serial для отладки
   Serial.begin(115200);
 
@@ -138,16 +142,17 @@ void setup() {
   // Подключение к Wi-Fi
   connectToWiFi(&display1);
 
+  
   bool validLocation = false;
   while( ! validLocation ){
-    auto error = GeoLocationAsync::getLocation( myLocation, &display1 );
+    auto error = GeoLocationAsync::getLocation( GeoLocationAsync::myLocation, &display1 );
     switch( error ){
       case RequestGeoAsync::OK:
         validLocation = true;
         display1.clearDisplay();
         display1.display();
         if ( aproximateLocationAsync ) display1.print('~');
-        display1.print(myLocation.city);
+        display1.print(GeoLocationAsync::myLocation.city);
         break;
       default:
         Serial.print("Error get location: ");
