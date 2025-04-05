@@ -23,7 +23,8 @@ tm* nowTm;
 #define HOURS *60 MINUTES
 #include "utils/weather_async.h" 
 #include "utils/wifi_utils.h"
-#include "utils/geo_utils.h"
+//#include "utils/geo_utils.h"
+#include "utils/geo_async.h"
 #include "utils/sensor_utils.h"
 #include "utils/display_utils.h"
 #include "utils/time_utils.h"
@@ -90,6 +91,7 @@ void setup() {
   // pointStop(10000,"Test done\n");
 
 
+
   Wire.begin(SDA, SCL);
   //Wire.setClock(400000); // Высокая скорость I2C
   I2C_Scan::printTo(Serial);
@@ -129,18 +131,22 @@ void setup() {
   displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2(), &Serial);
   CaptivePortal::init(eepromSets);
 
+
+  //GeoLocationAsync::test();
+
+  
   // Подключение к Wi-Fi
   connectToWiFi(&display1);
 
   bool validLocation = false;
   while( ! validLocation ){
-    auto error = GeoLocation::getLocation( myLocation, &display1 );
+    auto error = GeoLocationAsync::getLocation( myLocation, &display1 );
     switch( error ){
-      case Request::OK:
+      case RequestGeoAsync::OK:
         validLocation = true;
         display1.clearDisplay();
         display1.display();
-        if ( aproximateLocation ) display1.print('~');
+        if ( aproximateLocationAsync ) display1.print('~');
         display1.print(myLocation.city);
         break;
       default:

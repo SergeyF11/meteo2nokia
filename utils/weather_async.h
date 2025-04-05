@@ -1,19 +1,13 @@
 #pragma once
-#include <AsyncHTTPRequest_Debug_Generic.h>
-#include <AsyncHTTPRequest_Generic.h>
-#include <AsyncHTTPRequest_Impl_Generic.h>
-
-#include <ESPAsyncTCP.h>
-//#include <ESPAsyncWebServer.h>
+#include "AsyncHttpsClient.h"
 #include <ArduinoJson.h>
 #include "wifi_utils.h"
-#include "geo_utils.h"
-//#include "geo_async.h"
+//#include "geo_utils.h"
+#include "geo_async.h"
 #include "display_utils.h"
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 #include <partialHash32.h>
-
 
 #define POINT_STOP_WEATHER
 
@@ -25,103 +19,60 @@
 
 #define retryWrongUpdateMs 5000UL
 
-
-//extern const String apiKey;
-//extern char * apiKey;
-extern GeoLocation::GeoData myLocation;
+extern GeoLocationAsync::GeoData myLocation;
 extern const unsigned long weatherUpdateInterval;
 #include "ticker.h"
 extern RefresherTicker weatherTick;
 
 namespace Weather {
-    // struct IconPtr {
-    //     uint8_t code;
-    //     bool isDay;
-    // };
-    // //const uint
-    // constexpr IconPtr Decode(const char * codeStr){
-    //     constexpr uint8_t code = (10*codeStr[0]-'0') + (codeStr[1]-'0');
-    //     return (codeStr[2] == 'd' ) ? IconPtr{code, true} : IconPtr{code, false};  
-    // };
-    // constexpr IconPtr operator "" _decode(const char *str){
-    //     return Decode(str);
-    // }
-
-    String getLang(GeoLocation::GeoData& location);
-
-    AsyncRequest::State updateState = AsyncRequest::Idle;
-
-    int hPa2MmHg(const float pressure) {
-        return int(pressure * 0.750062);
-    };
-
-    // const IconPtr decode(const char * codeStr){
-    //     IconPtr ptr;
-    //     char dayNight = 0;
-    //     sscanf("%02u%c", codeStr, &ptr.code, &dayNight);
-    //     ptr.isDay = ( dayNight == 'd' );
-    //     return ptr;
-    // };
-
-    // const uint8_t code2code(const char * codeStr){
-    //     auto ptr = decode(codeStr);
-    //     return ptr.isDay ? ptr.code : 100U+ptr.code;
-    // };
-    // Icons::Icon getIconByCodeStr(const char* code){
-    //     auto ptr = decode(code);
-    //     switch(ptr.code){
-    //         case "01d"_decode.code: return Icons::icon_0_1;
-    //         case "01n"_decode.code: return Icons::icon_2_2;
-    //     }
-    // };
-
     const uint8_t* getIconByCode(const char* code) {
-    // Icons::Icon getIconByCode(const char* code) {
-        auto codeH = Hash32::hash(code);
-        switch(codeH){
-    #ifdef NEW_BMP
-            case "01d"_h:  return Icons::bmp_01d;
-            case "01n"_h:  return Icons::bmp_01n;
-            case "02d"_h:  return Icons::bmp_02d;
-            case "02n"_h:  return Icons::bmp_02n;
-            case "03d"_h:  
-            case "03n"_h:  return Icons::bmp_03d;
-            case "04d"_h: 
-            case "04n"_h:  return Icons::bmp_04d;
-            case "09d"_h:  
-            case "09n"_h:  return Icons::bmp_09d;
-            case "10d"_h:  return Icons::bmp_10d;
-            case "10n"_h:  return Icons::bmp_10n;
-            case "11d"_h:  
-            case "11n"_h:  return Icons::bmp_11d;
-            case "13d"_h:  
-            case "13n"_h:  return Icons::bmp_13d;
-            case "50d"_h:  
-            case "50n"_h:  return Icons::bmp_50d;
-        #else
-            case "01d"_h:  return Icons::icon_0_1;
-            case "01n"_h:  return Icons::icon_2_2;
-            case "02d"_h:  return Icons::icon_0_2;
-            case "02n"_h:  return Icons::icon_0_3;
-            case "03d"_h:  return Icons::icon_0_0;
-            case "03n"_h:  return Icons::icon_0_0;
-            case "04d"_h:  return Icons::icon_0_0;
-            case "04n"_h:  return Icons::icon_0_0;
-            case "09d"_h:  return Icons::icon_1_1;
-            case "09n"_h:  return Icons::icon_1_1;
-            case "10d"_h:  return Icons::icon_0_4;
-            case "10n"_h:  return Icons::icon_1_4;
-            case "11d"_h:  return Icons::icon_1_0;
-            case "11n"_h:  return Icons::icon_1_0;
-            case "13d"_h:  return Icons::icon_1_2;
-            case "13n"_h:  return Icons::icon_1_2;
-            case "50d"_h:  return Icons::icon_2_1;
-            case "50n"_h:  return Icons::icon_2_1;
-        #endif
-        }
-        // Если код не найден, возвращаем nullptr или иконку по умолчанию
-        return nullptr;
-    };
+        // Icons::Icon getIconByCode(const char* code) {
+            auto codeH = Hash32::hash(code);
+            switch(codeH){
+        #ifdef NEW_BMP
+                case "01d"_h:  return Icons::bmp_01d;
+                case "01n"_h:  return Icons::bmp_01n;
+                case "02d"_h:  return Icons::bmp_02d;
+                case "02n"_h:  return Icons::bmp_02n;
+                case "03d"_h:  
+                case "03n"_h:  return Icons::bmp_03d;
+                case "04d"_h: 
+                case "04n"_h:  return Icons::bmp_04d;
+                case "09d"_h:  
+                case "09n"_h:  return Icons::bmp_09d;
+                case "10d"_h:  return Icons::bmp_10d;
+                case "10n"_h:  return Icons::bmp_10n;
+                case "11d"_h:  
+                case "11n"_h:  return Icons::bmp_11d;
+                case "13d"_h:  
+                case "13n"_h:  return Icons::bmp_13d;
+                case "50d"_h:  
+                case "50n"_h:  return Icons::bmp_50d;
+            #else
+                case "01d"_h:  return Icons::icon_0_1;
+                case "01n"_h:  return Icons::icon_2_2;
+                case "02d"_h:  return Icons::icon_0_2;
+                case "02n"_h:  return Icons::icon_0_3;
+                case "03d"_h:  return Icons::icon_0_0;
+                case "03n"_h:  return Icons::icon_0_0;
+                case "04d"_h:  return Icons::icon_0_0;
+                case "04n"_h:  return Icons::icon_0_0;
+                case "09d"_h:  return Icons::icon_1_1;
+                case "09n"_h:  return Icons::icon_1_1;
+                case "10d"_h:  return Icons::icon_0_4;
+                case "10n"_h:  return Icons::icon_1_4;
+                case "11d"_h:  return Icons::icon_1_0;
+                case "11n"_h:  return Icons::icon_1_0;
+                case "13d"_h:  return Icons::icon_1_2;
+                case "13n"_h:  return Icons::icon_1_2;
+                case "50d"_h:  return Icons::icon_2_1;
+                case "50n"_h:  return Icons::icon_2_1;
+            #endif
+            }
+            // Если код не найден, возвращаем nullptr или иконку по умолчанию
+            return nullptr;
+        };
+    
 
     struct Data {
         char iconCode[4] = {0};
@@ -134,68 +85,55 @@ namespace Weather {
 
     static Data data;
     static time_t updatedTime = 0;
+    AsyncHttpsClient client;
 
-    const char apiUrl[] PROGMEM = "http://api.openweathermap.org/data/2.5/weather?";
+    String getLang(GeoLocationAsync::GeoData& location);
+    
+    inline int hPa2MmHg(const float pressure) {
+        return int(pressure * 0.750062);
+    };
 
-    AsyncHTTPRequest request;
+    AsyncRequest::State updateState = AsyncRequest::Idle;
 
-    void onRequestComplete(void* optParm, AsyncHTTPRequest* request, int readyState) {
-        if (readyState == readyStateDone) {
-            if (request->responseHTTPcode() == 200) {
-                updateState = AsyncRequest::SuccessRespond;
-                if ( request->respHeaderExists("Date")){
-                    TimeUtils::setGMTTime( request->respHeaderValue("Date"));
-                    pointStop(0, "Set time %s\n", request->respHeaderValue("Date") );
-                }
-                String payload = request->responseText();
+    void onRequestComplete() {
+        if (client.getStatusCode() == 200) {
+            updateState = AsyncRequest::SuccessRespond;
+            String payload = client.getBody();
+            
+            JsonDocument doc;
+            auto updated = deserializeJson(doc, payload);
 
-                JsonDocument doc;
-                auto updated = deserializeJson(doc, payload);
+            if (updated.code() == DeserializationError::Ok) {
+                Weather::updatedTime = time(nullptr);
+                strncpy(Weather::data.iconCode, doc["weather"][0]["icon"], sizeof(data.iconCode));
+                Weather::data.temp = doc["main"]["temp"].as<float>();
+                Weather::data.tempFeel = doc["main"]["feels_like"].as<float>();
+                Weather::data.humidity = doc["main"]["humidity"].as<float>();
+                Weather::data.pressure = hPa2MmHg(doc["main"]["pressure"].as<float>());
+                Weather::data.timeZone = doc["timezone"].as<int>();
+                configTime(Weather::data.timeZone, 0, NTP_SERVERS);
 
-                if (updated.code() == DeserializationError::Ok) {
-                    Weather::updatedTime = time(nullptr);
-                    // String iconCode = doc["weather"][0]["icon"].as<String>();
-                    // strcpy(Weather::data.iconCode, iconCode.c_str());
-                    strncpy(Weather::data.iconCode, doc["weather"][0]["icon"], sizeof(data.iconCode));
-                    Weather::data.temp = doc["main"]["temp"].as<float>();
-                    Weather::data.tempFeel = doc["main"]["feels_like"].as<float>();
-                    Weather::data.humidity = doc["main"]["humidity"].as<float>();
-                    Weather::data.pressure = hPa2MmHg(doc["main"]["pressure"].as<float>());
-                    Weather::data.timeZone = doc["timezone"].as<int>();
-                    configTime(Weather::data.timeZone, 0, NTP_SERVERS);
-
-                    String _city = doc["name"].as<String>();
-                    //strcpy(Weather::data.cityName, _city.c_str());
-                    if ( getLang(myLocation).isEmpty() )
-                        strcpy(Weather::data.cityName, _city.c_str());
-                    else
-                        strcpy(Weather::data.cityName, utf8rus(_city).c_str());
-                    
-                    const char * desc =  doc["weather"][0]["description"];
-                    pointStop(0, "Weather data updated:\n\tDescription: %s [%s]\n",  desc, data.iconCode);
-                    pointStop(0, "\n\tTemperature: %.1fC\n\tFeels like %.1fC\n", Weather::data.temp , Weather::data.tempFeel);
-                    pointStop(0, "\n\tHumidity: %.0f%%\n\tPressure: %dmmHg\n",Weather::data.humidity, Weather::data.pressure);
-                    pointStop(0, "\n\tCity name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
-                    // Serial.println("Weather data updated:");
-                    // Serial.println("Description: " + doc["weather"][0]["description"].as<String>());
-                    
-                    // Serial.println("Temperature: " + String(Weather::data.temp) + "C\nFeels like " + String(Weather::data.tempFeel) + "C");
-                    // Serial.println("Humidity: " + String(Weather::data.humidity) + "%");
-                    // Serial.println("Pressure: " + String(Weather::data.pressure) + "mmHg");
-                    // Serial.printf("City name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
-                } else {
-                    updateState = AsyncRequest::WrongPayload;
-                    Serial.println("Error: wrong weather data JSON");
-                }
+                String _city = doc["name"].as<String>();
+                if (getLang(myLocation).isEmpty())
+                    strcpy(Weather::data.cityName, _city.c_str());
+                else
+                    strcpy(Weather::data.cityName, utf8rus(_city).c_str());
+                
+                pointStop(0, "Weather data updated:\n\tDescription: %s [%s]\n",  
+                         doc["weather"][0]["description"], data.iconCode);
+                // ... остальные логи ...
             } else {
-                updateState = AsyncRequest::FailRespond;
-                Serial.printf("Error: HTTP request failed [%d] %s\n", request->responseHTTPcode(), request->responseText().c_str());
+                updateState = AsyncRequest::WrongPayload;
+                Serial.println("Error: wrong weather data JSON");
             }
-            request->setDebug(false);
+        } else {
+            updateState = AsyncRequest::FailRespond;
+            Serial.printf("Error: HTTP request failed [%d] %s\n", 
+                         client.getStatusCode(), client.getError().c_str());
         }
     };
 
-    String getLang(GeoLocation::GeoData& location) {
+    String getLang(GeoLocationAsync::GeoData& location) {
         String code;
         if ( location.country[0] != '\0' ) {
             code = String(location.country);
@@ -209,13 +147,11 @@ namespace Weather {
         return code;
     };
 
-    bool waitConnection = false;
+
     AsyncRequest::Error updateData() {
+        if(!WiFi.isConnected()) return AsyncRequest::NoConnection;
 
-        if( !WiFi.isConnected() ) return AsyncRequest::NoConnection;
-
-         
-        String requestUri(apiUrl);
+        String requestUri("https://api.openweathermap.org/data/2.5/weather?");
 
         if (myLocation.valid()) {
             requestUri += "lat=";
@@ -223,7 +159,6 @@ namespace Weather {
             requestUri += "&lon=";
             requestUri += String(myLocation.longitude, 5);
             requestUri += getLang(myLocation);
-            
         } else {
             requestUri += "q=";
             requestUri += myLocation.city;
@@ -234,19 +169,23 @@ namespace Weather {
         requestUri += eepromSets.getWeatherKey();
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
-        if (request.readyState() == readyStateUnsent || request.readyState() == readyStateDone) {
-            request.setDebug(true);
-            request.onReadyStateChange(onRequestComplete);
-            request.open("GET", requestUri.c_str());
-            if ( request.send() ) {
-                updateState = AsyncRequest::RespondWaiting;
-                return AsyncRequest::OK;
-            } else { 
-                pointStop(0,"Error: [%d] %s\n", request.responseHTTPcode(), request.responseHTTPString());   
-                return AsyncRequest::Error::WrongRequest; 
-            }
+        if (!client.isBusy()) {
+            client.get(requestUri, 
+                [](int statusCode, const String& headers) {
+                    // Обработка заголовков (если нужно)
+                },
+                [](const String& chunk) {
+                    // Обработка данных по мере поступления (если нужно)
+                },
+                onRequestComplete,
+                [](const String& error) {
+                    Serial.printf("Request error: %s\n", error.c_str());
+                    updateState = AsyncRequest::FailRespond;
+                }
+            );
+            updateState = AsyncRequest::RespondWaiting;
+            return AsyncRequest::OK;
         }
-
         return AsyncRequest::SendedAlready;
     }
 
@@ -284,7 +223,7 @@ namespace Weather {
         display.setTextSize(1);
         if (data.cityName[0] != 0) {
             //Display::setFontSize(display, 1);
-            if ( aproximateLocation ) display.print('~');
+            if ( aproximateLocationAsync ) display.print('~');
             display.print(data.cityName);
             //Display::setFontSize(display);
         }
@@ -355,7 +294,7 @@ namespace Weather {
         case AsyncRequest::WaitWiFiConnection:
           update(display, true);
           if( WiFi.isConnected() ) {
-            waitConnection = false;
+          //  waitConnection = false;
             if( updateData() != AsyncRequest::Error::OK ){
               weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
               //waitConnection = true;
@@ -364,7 +303,7 @@ namespace Weather {
               break;
             }
           } else if ( Reconnect::waitTimeout() ) {
-              waitConnection = false;
+            //  waitConnection = false;
               weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
               updateState = AsyncRequest::State::FailRespond;
           } 
@@ -461,9 +400,8 @@ namespace Weather {
                     updateState = AsyncRequest::WaitWiFiConnection;
                     Reconnect::connect(5000);
                 }
-            } else {    // not Idle ?
-
             }
+            client.update();
         }
     }
-}; //namespace
+}; // namespace Weather
