@@ -176,12 +176,13 @@ namespace Weather {
 
         if (!httpsClient.isBusy()) {
             httpsClient.get(requestUri, 
-                [](int statusCode, const String& headers) {
-                    // Обработка заголовков (если нужно)
-                },
-                [](const String& chunk) {
-                    // Обработка данных по мере поступления (если нужно)
-                },
+                // [](int statusCode, const String& headers) {
+                //     // Обработка заголовков (если нужно)
+                // },
+                // [](const String& chunk) {
+                //     // Обработка данных по мере поступления (если нужно)
+                // },
+                nullptr, nullptr,
                 onRequestComplete,
                 [](const String& error) {
                     Serial.printf("Request error: %s\n", error.c_str());
@@ -197,26 +198,26 @@ namespace Weather {
     void drawIcon(Adafruit_PCD8544& display, const uint8_t* bitmap, const uint8_t width = 32, const uint8_t height = 32) {
         display.clearDisplay();
         if (bitmap)
-            display.drawBitmap(0, 7, bitmap, width, height, PRINT_COLOR);
+            display.drawBitmap(2, 9, bitmap, width, height, PRINT_COLOR);
     }
 
-    void printRightAdjast(Adafruit_PCD8544& display, const String& str, const int textSize = 1, const int16_t _yPos = -999) {
+    void printRightAdjast(Adafruit_PCD8544& display, const String& str, const unt textSize = 1, const int16_t _yPos = -999) {
         int16_t yPos;
         if (_yPos == -999) {
             yPos = display.getCursorY();
         } else {
             yPos = _yPos;
         }
-
-        uint charWidth;
-        switch (textSize) {
-        case 1: charWidth = 6;
-            break;
-        case 2: charWidth = 12;
-            break;
-        case 3: charWidth = 18;
-            break;
-        }
+        const uint charWidth = 6U * textSize;
+        // uint charWidth;
+        // switch (textSize) {
+        // case 1: charWidth = 6;
+        //     break;
+        // case 2: charWidth = 12;
+        //     break;
+        // case 3: charWidth = 18;
+        //     break;
+        // }
         auto pos = display.width() - (charWidth * (str.length()));
         display.setCursor(pos, yPos);
         display.print(str);
@@ -226,13 +227,14 @@ namespace Weather {
         display.setTextColor(PRINT_COLOR);
         display.setCursor(0, 1);
         display.setTextSize(1);
+
+        if ( aproximateLocationAsync ) display.print('~');
         if (data.cityName[0] != 0) {
-            //Display::setFontSize(display, 1);
-            if ( aproximateLocationAsync ) display.print('~');
             display.print(data.cityName);
-            //Display::setFontSize(display);
         }
-        else display.print(GeoLocationAsync::myLocation.city);
+        else {
+            display.print(GeoLocationAsync::myLocation.city);
+        }
 
         display.setTextSize(2);
         String str(data.temp, 0);
@@ -252,7 +254,7 @@ namespace Weather {
         str += 'C';
         Display::printRightAdjast(display, str);
 
-        if (show) display.display();
+//        if (show) display.display();
     };
 
     unsigned long wrongUpdateInterval(unsigned int renewMs) {
@@ -262,21 +264,26 @@ namespace Weather {
         return newSet;
     };
 
-    void printWifiOn(Adafruit_PCD8544& display) {
-        display.setCursor(0, 0);
-        Display::printRightAdjast(display, String(char(0xAD))); // антенна
-    };
+
+    // void printWifiIndicator(Adafruit_PCD8544& display, bool showWifi) {
+    //     display.setCursor(0, 0);
+    //     if (showWifi) {
+    //         Display::printRightAdjast(display, String(char(0xAD))); // WiFi icon
+    //     } else {
+    //         char buf[6] = {0};
+    //         Display::printRightAdjast(display, TimeUtils::toStr(buf, &updatedTime));
+    //     }
+    // };
+
+    // void printWifiOn(Adafruit_PCD8544& display) {
+    //     display.setCursor(0, 0);
+    //     Display::printRightAdjast(display, String(char(0xAD))); // антенна
+    // };
 
     void printUpdateStatus(Adafruit_PCD8544& display, bool wifi) {
         display.setCursor(0, 0);
         if ( wifi ) Display::printRightAdjast(display, String(char(0xAD))); // антенна
         else {
-            // String updatedTimeS;
-            // auto ut = localtime( &updatedTime);
-            // updatedTimeS += ut->tm_hour;
-            // updatedTimeS += ':';
-            // updatedTimeS += ut->tm_min;
-            // Display::printRightAdjast(display, updatedTimeS);
             char buf[6] = {0};
             Display::printRightAdjast(display, TimeUtils::toStr(buf, &updatedTime ));//TimeUtils::toString(&updatedTime));
         }
@@ -285,58 +292,105 @@ namespace Weather {
     void update(Adafruit_PCD8544& display, bool wifi = false) {
         auto icon = Weather::getIconByCode(Weather::data.iconCode);
         Weather::drawIcon(display, icon, Icons::width, Icons::height);
-        //if (wifi) Weather::printWifiOn(display);(5U*60*1000)
+
         printUpdateStatus(display, wifi);
         Weather::printData(display, data, true);
+        display.display();
     };
 
-    void updateDataMy(Adafruit_PCD8544& display){
+    // void updateDataMy(Adafruit_PCD8544& display){
 
-    switch ( updateState ){
-        case AsyncRequest::Idle:
-          break;
+    // switch ( updateState ){
+    //     case AsyncRequest::Idle:
+    //       break;
         
-        case AsyncRequest::WaitWiFiConnection:
-          update(display, true);
-          if( WiFi.isConnected() ) {
-          //  waitConnection = false;
-            if( updateData() != AsyncRequest::Error::OK ){
-              weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
-              //waitConnection = true;
-              updateState = AsyncRequest::State::FailRespond;
-              Serial.println("Fail responde");
-              break;
+    //     case AsyncRequest::WaitWiFiConnection:
+    //       update(display, true);
+    //       if( WiFi.isConnected() ) {
+    //       //  waitConnection = false;
+    //         if( updateData() != AsyncRequest::Error::OK ){
+    //           weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
+    //           //waitConnection = true;
+    //           updateState = AsyncRequest::State::FailRespond;
+    //           Serial.println("Fail responde");
+    //           break;
+    //         }
+    //       } else if ( Reconnect::waitTimeout() ) {
+    //         //  waitConnection = false;
+    //           weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+    //           updateState = AsyncRequest::State::FailRespond;
+    //       } 
+    //       //if ( waitConnection)
+    //       // ответа ещё нет !!!
+    //       updateState = AsyncRequest::State::RespondWaiting;
+    //       break;
+
+    //     case AsyncRequest::State::FailRespond:
+    //     case AsyncRequest::State::SuccessRespond:
+    //       WiFi.disconnect(true,false);
+    //       delay(1);
+    //       //WiFi.mode(WIFI_OFF);
+    //       Serial.println("WiFi disconnect and off");
+    //       update(display);
+    //       updateState = AsyncRequest::State::Idle;
+    //       break;
+    //     case AsyncRequest::State::RespondWaiting:
+    //       update(display, true);
+    //       //updateState = AsyncRequest::State::Unknown;
+    //       break;
+    //     default:
+    //     //  case Weather::FailUpdate:
+    //       update(display, true); //nowTm->tm_sec == 0);
+    //       break;
+    //   }
+    // };
+    void handleDataUpdate() {
+        if (weatherTick.tick()) {
+            if (updateState == AsyncRequest::Idle) {
+                if (WiFi.isConnected()) {
+                    if (updateData() == AsyncRequest::OK) {
+                        updateState = AsyncRequest::RespondWaiting;
+                    } else {
+                        updateState = AsyncRequest::FailRespond;
+                        weatherTick.reset(wrongUpdateInterval(10 SECONDS));
+                    }
+                } else {
+                    updateState = AsyncRequest::WaitWiFiConnection;
+                    Reconnect::connect(5000);
+                }
             }
-          } else if ( Reconnect::waitTimeout() ) {
-            //  waitConnection = false;
-              weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
-              updateState = AsyncRequest::State::FailRespond;
-          } 
-          //if ( waitConnection)
-          // ответа ещё нет !!!
-          updateState = AsyncRequest::State::RespondWaiting;
-          break;
+            httpsClient.update();
+        }
+    }
 
-        case AsyncRequest::State::FailRespond:
-        case AsyncRequest::State::SuccessRespond:
-          WiFi.disconnect(true,false);
-          delay(1);
-          //WiFi.mode(WIFI_OFF);
-          Serial.println("WiFi disconnect and off");
-          update(display);
-          updateState = AsyncRequest::State::Idle;
-          break;
-        case AsyncRequest::State::RespondWaiting:
-          update(display, true);
-          //updateState = AsyncRequest::State::Unknown;
-          break;
-        default:
-        //  case Weather::FailUpdate:
-          update(display, true); //nowTm->tm_sec == 0);
-          break;
-      }
-    };
-
+    void handleDisplayUpdate(Adafruit_PCD8544& display) {
+        switch (updateState) {
+            case AsyncRequest::WaitWiFiConnection:
+            case AsyncRequest::RespondWaiting:
+                updateDisplay(display, true); // Show with WiFi indicator
+                break;
+                
+            case AsyncRequest::SuccessRespond:
+                WiFi.disconnect(true, false);
+                updateDisplay(display);
+                updateState = AsyncRequest::Idle;
+                break;
+                
+            case AsyncRequest::FailRespond:
+                updateDisplay(display);
+                weatherTick.reset(wrongUpdateInterval(5 MINUTES));
+                updateState = AsyncRequest::Idle;
+                break;
+                
+            default:
+                if (weatherTick.refresh()) {
+                    pointStop(0, "Refresh display\n");
+                    updateDisplay(display);
+                }
+                break;
+        }
+    }
+    
     void updateDataDS(Adafruit_PCD8544& display) {
         if( WiFi.isConnected() ) httpsClient.update();
         switch (updateState) {
