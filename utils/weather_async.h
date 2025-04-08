@@ -27,28 +27,6 @@ extern RefresherTicker weatherTick;
 extern AsyncHttpsClient httpsClient;
 
 
-// constexpr uint32_t _codeToKey(const char *code, const uint32_t _start=0 ){
-//     return *code ? _codeToKey(code + 1, (_start<<8) | static_cast<uint32_t>(*code) ) : _start;
-// };
-
-// constexpr uint32_t codeToKey(const char (&code)[4]) {
-//     return (static_cast<uint32_t>(code[0]) << 16) |
-//            (static_cast<uint32_t>(code[1]) << 8) |
-//            (static_cast<uint32_t>(code[2]) );
-// }
-// inline const uint32_t codeToKeyR(const char *code) {
-//     if( strlen(code) != 3 ) return 0;
-//     return (static_cast<uint32_t>(code[0]) << 16) |
-//            (static_cast<uint32_t>(code[1]) << 8) |
-//            (static_cast<uint32_t>(code[2]) );
-// }
-
-// constexpr uint32_t operator"" _toUint32(const char *code, size_t){
-//     return _codeToKey( code );
-// } 
-
-// #pragma message( "01d"_toUint32 )
-
 namespace Weather {
     // const uint8_t* getIconByCode(const char* code) {
     //     switch( codeToKeyR(code)){
@@ -353,74 +331,6 @@ namespace Weather {
     //     case AsyncRequest::Idle:
     //       break;
         
-<<<<<<< HEAD
-        case AsyncRequest::WaitWiFiConnection:
-          update(display, true);
-          if( WiFi.isConnected() ) {
-          //  waitConnection = false;
-            auto err = updateData();
-            switch(err){
-                case AsyncRequest::Error::WrongRequest:
-                    weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
-                    Serial.println("Fail responde");
-                    updateState = AsyncRequest::State::FailRespond;
-                    break;
-                case AsyncRequest::Error::OK:
-                    updateState = AsyncRequest::State::SuccessRespond;
-                    break;
-            }
-            // if( err == AsyncRequest::Error::WrongRequest  ){
-            //   weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
-            //   //waitConnection = true;
-            //   updateState = AsyncRequest::State::FailRespond;
-            //   Serial.println("Fail responde");
-            //   break;
-            // }
-          } else if ( Reconnect::waitTimeout() ) {
-            //  waitConnection = false;
-              weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
-              updateState = AsyncRequest::State::FailRespond;
-          } 
-          //if ( waitConnection)
-          // ответа ещё нет !!!
-          updateState = AsyncRequest::State::RespondWaiting;
-          break;
-
-        case AsyncRequest::State::FailRespond:
-        case AsyncRequest::State::SuccessRespond:
-        {
-            static RequestGeoAsync::Error geoErr;
-
-            geoErr =GeoLocationAsync::geoRequester.update();
-            switch( geoErr ){
-                
-                case RequestGeoAsync::Error::Pending:
-                    update(display, true);
-                    Serial.println("Wait geo respond");
-                    break;
-                default:
-                    //WiFi.disconnect(true,false);
-                    wiFiSleep();
-                    delay(1);
-                    //WiFi.mode(WIFI_OFF);
-                    Serial.println("WiFi disconnect and off");
-                    update(display);ArduinoOTA.setHostname("myesp8266");
-                    updateState = AsyncRequest::State::Idle;
-            } 
-          
-        }
-          break;
-        case AsyncRequest::State::RespondWaiting:
-          update(display, true);
-          //updateState = AsyncRequest::State::Unknown;
-          break;
-        default:
-        //  case Weather::FailUpdate:
-          update(display, true); //nowTm->tm_sec == 0);
-          break;
-      }
-    };
-=======
     //     case AsyncRequest::WaitWiFiConnection:
     //       update(display, true);
     //       if( WiFi.isConnected() ) {
@@ -479,7 +389,6 @@ namespace Weather {
             httpsClient.update();
         }
     }
->>>>>>> 7870b5f0c0a2b96181ec6ba4cd9319d827dc5b60
 
     void handleDisplayUpdate(Adafruit_PCD8544& display) {
         switch (updateState) {
