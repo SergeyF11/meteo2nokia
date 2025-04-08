@@ -229,7 +229,7 @@ namespace Weather {
             display.drawBitmap(2, 9, bitmap, width, height, PRINT_COLOR);
     }
 
-    void printRightAdjast(Adafruit_PCD8544& display, const String& str, const unt textSize = 1, const int16_t _yPos = -999) {
+    void printRightAdjast(Adafruit_PCD8544& display, const String& str, const uint8_t textSize = 1, const int16_t _yPos = -999) {
         int16_t yPos;
         if (_yPos == -999) {
             yPos = display.getCursorY();
@@ -395,17 +395,17 @@ namespace Weather {
         switch (updateState) {
             case AsyncRequest::WaitWiFiConnection:
             case AsyncRequest::RespondWaiting:
-                updateDisplay(display, true); // Show with WiFi indicator
+                update(display, true); // Show with WiFi indicator
                 break;
                 
             case AsyncRequest::SuccessRespond:
                 WiFi.disconnect(true, false);
-                updateDisplay(display);
+                update(display);
                 updateState = AsyncRequest::Idle;
                 break;
                 
             case AsyncRequest::FailRespond:
-                updateDisplay(display);
+                update(display);
                 weatherTick.reset(wrongUpdateInterval(5 MINUTES));
                 updateState = AsyncRequest::Idle;
                 break;
@@ -413,7 +413,7 @@ namespace Weather {
             default:
                 if (weatherTick.refresh()) {
                     pointStop(0, "Refresh display\n");
-                    updateDisplay(display);
+                    update(display);
                 }
                 break;
         }

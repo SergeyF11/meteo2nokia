@@ -193,7 +193,7 @@ void inline printDots(Adafruit_PCD8544 *display, const byte *icon =  WiFi_Icon::
     printDots(*display, icon, textSize);
 };
 
-#idef DISPAY_TEST
+#ifdef DISPAY_TEST
 namespace TestChars
 {
   static long delayMs = 1000;
