@@ -6,7 +6,8 @@
         "*.tcc": "cpp",
         "optional": "cpp",
         "atomic": "cpp",
-        "*.h~": "cpp"
+        "*.h~": "cpp",
+        "ranges": "cpp"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

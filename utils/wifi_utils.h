@@ -10,6 +10,7 @@
 #include "display_utils.h"
 #include "wm_params.h"
 #include <MultiResetDetector.h>
+#include "ota_utils.h"
 
 // лучше всё это определить в setup
 WiFiManager wm;
@@ -20,7 +21,7 @@ WiFiManagerParameter geolocationApiKeyParam;
 SliderControl *contrD1;
 SliderControl *contrD2;
 
-#define POINT_STOP_WIFI
+//#define POINT_STOP_WIFI
 
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...)                               \
@@ -154,6 +155,8 @@ namespace CaptivePortal
     }                                        \
   }
 
+bool wifiInSleepMode = false;
+
 // hasValidApiKey
 namespace Reconnect
 {
@@ -222,8 +225,11 @@ namespace Reconnect
   {
     if (WiFi.isConnected())
       return true;
-    if (!WiFi.mode(WIFI_STA))
+
+    if ( !WiFi.forceSleepWake() || !WiFi.mode(WIFI_STA))
       return false;
+    wifiInSleepMode = false;
+
     if (_timeout != 0 )
       timeout = _timeout;
 
@@ -256,6 +262,10 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
   } else  {
     // needExitConfigPortal = false;
     Serial.println("Config portal running");
+    
+    ArduinoOTA.setHostname( CaptivePortal::name );
+    OTA::setup();
+
 
     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
     {
@@ -270,7 +280,7 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
           else
             resetTriple = tripleReset.isTriggered();
         }
-        Serial.println("Retart portal on demand");
+        Serial.println("Restart portal on demand");
         wm.startConfigPortal(CaptivePortal::name);
       }
 
@@ -278,6 +288,7 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
       {
         pointStop(0, "Status changed\n");
       }
+      OTA::handle();
       each(500, printDots(display, WiFi_Icon::_bmp, 2));
     }
 
@@ -287,4 +298,16 @@ void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
   }
   if (WiFi.isConnected())
     Reconnect::save(WiFi.SSID(), WiFi.psk());
+}
+
+
+extern const unsigned long weatherUpdateInterval;
+bool wiFiSleep(){
+  wifiInSleepMode = ( WiFi.disconnect(true,false) ) ;
+  if( wifiInSleepMode ) pointStop(0, "WiFi disconnected\n");
+  
+  wifiInSleepMode &= WiFi.forceSleepBegin(1000UL * weatherUpdateInterval);  // Отключить Wi-Fi
+  if( wifiInSleepMode ) pointStop(0, "WiFi Sleeped\n");
+
+  return wifiInSleepMode;
 }

@@ -6,7 +6,7 @@
 #include <Adafruit_PCD8544_multi.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ESP8266WiFi.h>
-
+#include <ArduinoOTA.h>
 
 #define PRINT_COLOR BLACK
 #define CONTRAST1 55
@@ -30,6 +30,7 @@ tm* nowTm;
 #include "utils/time_utils.h"
 #include "utils/tz_utils.h"
 
+
 AsyncHttpsClient httpsClient;
 // Глобальные переменные для хранения настроек в eeprom и в программе
 EepromData eepromSets;
@@ -37,7 +38,7 @@ EepromData eepromSets;
 #define hourToMs(hs) (1000L * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
-constexpr unsigned long weatherUpdateInterval = hourToMs( 1/2 ); // = 30 минут для отладки
+constexpr unsigned long weatherUpdateInterval = 30 MINUTES; //hourToMs( 1/6 ); // = 10 минут для отладки
 #define UPDATE_NOW -weatherUpdateInterval
 
 unsigned long lastWeatherUpdate = 0;
@@ -49,10 +50,14 @@ struct RefresherTicker weatherTick(weatherUpdateInterval);
 struct SimpleTicker htuSensorTick( 60 SECONDS );
 
 
+
 //HTU21D htu;
 
 // Создаем объекты для экранов Nokia 5110
-Adafruit_PCD8544 display2 = Adafruit_PCD8544(14, 13, 2, 12, 16); // CLK, DIN, DC, SCE, RST (экран 1)
+//auto builtinLed = LED_BUILTIN; 
+
+//Adafruit_PCD8544 display2 = Adafruit_PCD8544(14, 13, D4, 12, 16); // CLK, DIN, DC, SCE, RST (экран 1)
+Adafruit_PCD8544 display2 = Adafruit_PCD8544(14, 13, 0, 12, 16); // CLK, DIN, DC, SCE, RST (экран 1)
 //                                           D5, D7, D4,D8, D0      
 Adafruit_PCD8544 display1 = Adafruit_PCD8544(14, 13, 0, 15, 16); // CLK, DIN, DC, SCE, RST (экран 2)
 //                                            D5, D7,D3,D6, D0
@@ -69,7 +74,7 @@ float weatherHumidity = 0;
 void setup() {
 
   httpsClient.setInsecureMode(true);
-  httpsClient.setTimeout(3000);
+  httpsClient.setTimeout(15000);
 
   // Инициализация Serial для отладки
   Serial.begin(115200);
@@ -145,7 +150,7 @@ void setup() {
   
   bool validLocation = false;
   while( ! validLocation ){
-    auto error = GeoLocationAsync::getLocation( GeoLocationAsync::myLocation, &display1 );
+    auto error = GeoLocationAsync::waitLocationReceived( GeoLocationAsync::myLocation, &display1 );
     switch( error ){
       case RequestGeoAsync::OK:
         validLocation = true;
@@ -163,7 +168,7 @@ void setup() {
 
   displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2());
   weatherTick.reset( -weatherUpdateInterval );
-
+  httpsClient.setTimeout(3000);
 }
 
 

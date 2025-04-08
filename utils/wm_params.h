@@ -2,7 +2,7 @@
 
 #include <WiFiManager.h>
 
-#define POINT_STOP_WMPARAMETERS
+//#define POINT_STOP_WMPARAMETERS
 
 #ifdef POINT_STOP_WMPARAMETERS
 #define pointStop(ms, fmt, ...)                               \

@@ -9,7 +9,7 @@
 #include "request_utils.h"
 #include <partialHash32.h>
 
-#define POINT_STOP_WEATHER
+//#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -26,7 +26,55 @@ extern const unsigned long weatherUpdateInterval;
 extern RefresherTicker weatherTick;
 extern AsyncHttpsClient httpsClient;
 
+
+// constexpr uint32_t _codeToKey(const char *code, const uint32_t _start=0 ){
+//     return *code ? _codeToKey(code + 1, (_start<<8) | static_cast<uint32_t>(*code) ) : _start;
+// };
+
+// constexpr uint32_t codeToKey(const char (&code)[4]) {
+//     return (static_cast<uint32_t>(code[0]) << 16) |
+//            (static_cast<uint32_t>(code[1]) << 8) |
+//            (static_cast<uint32_t>(code[2]) );
+// }
+// inline const uint32_t codeToKeyR(const char *code) {
+//     if( strlen(code) != 3 ) return 0;
+//     return (static_cast<uint32_t>(code[0]) << 16) |
+//            (static_cast<uint32_t>(code[1]) << 8) |
+//            (static_cast<uint32_t>(code[2]) );
+// }
+
+// constexpr uint32_t operator"" _toUint32(const char *code, size_t){
+//     return _codeToKey( code );
+// } 
+
+// #pragma message( "01d"_toUint32 )
+
 namespace Weather {
+    // const uint8_t* getIconByCode(const char* code) {
+    //     switch( codeToKeyR(code)){
+    //         case codeToKey("01d"):  return Icons::bmp_01d;
+    //         case codeToKey("01n"):  return Icons::bmp_01n;
+    //         case codeToKey("02d"):  return Icons::bmp_02d;
+    //         case codeToKey("02n"):  return Icons::bmp_02n;
+    //         case codeToKey("03d"):  
+    //         case codeToKey("03n"):  return Icons::bmp_03d;
+    //         case codeToKey("04d"): 
+    //         case codeToKey("04n"):  return Icons::bmp_04d;
+    //         case codeToKey("09d"):  
+    //         case codeToKey("09n"):  return Icons::bmp_09d;
+    //         case codeToKey("10d"):  return Icons::bmp_10d;
+    //         case codeToKey("10n"):  return Icons::bmp_10n;
+    //         case codeToKey("11d"):  
+    //         case codeToKey("11n"):  return Icons::bmp_11d;
+    //         //case codeToKey("13d"):  
+    //         case "13d"_toUint32: 
+    //         case codeToKey("13n"):  return Icons::bmp_13d;
+    //         case codeToKey("50d"):  
+    //         case codeToKey("50n"):  return Icons::bmp_50d;
+    //     };
+    //     return nullptr;
+    // }
+    
     const uint8_t* getIconByCode(const char* code) {
         // Icons::Icon getIconByCode(const char* code) {
             auto codeH = Hash32::hash(code);
@@ -183,9 +231,10 @@ namespace Weather {
                     // Обработка данных по мере поступления (если нужно)
                 },
                 onRequestComplete,
-                [](const String& error) {
+                [&](const String& error) {
                     Serial.printf("Request error: %s\n", error.c_str());
                     updateState = AsyncRequest::FailRespond;
+                    httpsClient.reset();
                 }
             );
             updateState = AsyncRequest::RespondWaiting;
@@ -197,7 +246,7 @@ namespace Weather {
     void drawIcon(Adafruit_PCD8544& display, const uint8_t* bitmap, const uint8_t width = 32, const uint8_t height = 32) {
         display.clearDisplay();
         if (bitmap)
-            display.drawBitmap(0, 7, bitmap, width, height, PRINT_COLOR);
+            display.drawBitmap(2, 9, bitmap, width, height, PRINT_COLOR);
     }
 
     void printRightAdjast(Adafruit_PCD8544& display, const String& str, const int textSize = 1, const int16_t _yPos = -999) {
@@ -300,13 +349,24 @@ namespace Weather {
           update(display, true);
           if( WiFi.isConnected() ) {
           //  waitConnection = false;
-            if( updateData() != AsyncRequest::Error::OK ){
-              weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
-              //waitConnection = true;
-              updateState = AsyncRequest::State::FailRespond;
-              Serial.println("Fail responde");
-              break;
+            auto err = updateData();
+            switch(err){
+                case AsyncRequest::Error::WrongRequest:
+                    weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
+                    Serial.println("Fail responde");
+                    updateState = AsyncRequest::State::FailRespond;
+                    break;
+                case AsyncRequest::Error::OK:
+                    updateState = AsyncRequest::State::SuccessRespond;
+                    break;
             }
+            // if( err == AsyncRequest::Error::WrongRequest  ){
+            //   weatherTick.reset( wrongUpdateInterval( 10 SECONDS ) );
+            //   //waitConnection = true;
+            //   updateState = AsyncRequest::State::FailRespond;
+            //   Serial.println("Fail responde");
+            //   break;
+            // }
           } else if ( Reconnect::waitTimeout() ) {
             //  waitConnection = false;
               weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
@@ -319,12 +379,27 @@ namespace Weather {
 
         case AsyncRequest::State::FailRespond:
         case AsyncRequest::State::SuccessRespond:
-          WiFi.disconnect(true,false);
-          delay(1);
-          //WiFi.mode(WIFI_OFF);
-          Serial.println("WiFi disconnect and off");
-          update(display);
-          updateState = AsyncRequest::State::Idle;
+        {
+            static RequestGeoAsync::Error geoErr;
+
+            geoErr =GeoLocationAsync::geoRequester.update();
+            switch( geoErr ){
+                
+                case RequestGeoAsync::Error::Pending:
+                    update(display, true);
+                    Serial.println("Wait geo respond");
+                    break;
+                default:
+                    //WiFi.disconnect(true,false);
+                    wiFiSleep();
+                    delay(1);
+                    //WiFi.mode(WIFI_OFF);
+                    Serial.println("WiFi disconnect and off");
+                    update(display);ArduinoOTA.setHostname("myesp8266");
+                    updateState = AsyncRequest::State::Idle;
+            } 
+          
+        }
           break;
         case AsyncRequest::State::RespondWaiting:
           update(display, true);
@@ -338,7 +413,7 @@ namespace Weather {
     };
 
     void updateDataDS(Adafruit_PCD8544& display) {
-        if( WiFi.isConnected() ) httpsClient.update();
+        
         switch (updateState) {
             // case AsyncRequest::Idle:
             // if ( weatherTick.refresh() ) update.display();
@@ -366,8 +441,11 @@ namespace Weather {
                 break;
                 
             case AsyncRequest::SuccessRespond:
-                WiFi.disconnect(true, false);
-                update(display);
+                //WiFi.disconnect(true, false);
+                if ( wiFiSleep()) {
+                    pointStop(0,"Wifi off\n");
+                    update(display);
+                }
                 updateState = AsyncRequest::Idle;
                 break;
                 
@@ -396,6 +474,7 @@ namespace Weather {
         if (weatherTick.tick()) {
             if (updateState == AsyncRequest::Idle) {
                 if (WiFi.isConnected()) {
+                    
                     if (updateData() == AsyncRequest::OK) {
                         updateState = AsyncRequest::RespondWaiting;
                     } else {
@@ -407,8 +486,9 @@ namespace Weather {
                     Reconnect::connect(5000);
                 }
             }
-            httpsClient.update();
+                        //httpsClient.update();
         }
+        if( WiFi.isConnected() ) httpsClient.update();
     }
 
 

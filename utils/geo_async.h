@@ -5,6 +5,13 @@
 #include "time_utils.h"
 #include "wifi_utils.h"
 
+//#define POINT_STOP_GEO
+#ifdef POINT_STOP_GEO
+#define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
+#else
+#define pointStop(ms, fmt, ...)
+#endif
+
 extern AsyncHttpsClient httpsClient;
 
 #define TX_OFFSET_INVALID 99999
@@ -51,135 +58,6 @@ namespace GeoLocationAsync {
         };
     };
 
-    // class GeoRequest {
-    // private:
-    //     AsyncHttpsClient httpsClient;
-    //     GeoData* targetData;
-    //     bool ipGeoCompleted = false;
-    //     bool cloudflareCompleted = false;
-    //     bool requestInProgress = false;
-    //     bool useIpGeoService = true; // Начинаем с IPGeolocation
-    //     unsigned long lastRetryTime = 0;
-    //     const char* geoKey;
-
-    //     void parseIpGeoResponse(const String& response) {
-    //         JsonDocument doc;
-    //         deserializeJson(doc, response);
-            
-    //         strlcpy(targetData->country, doc["country_name"], CountrySize);
-    //         strlcpy(targetData->city, doc["city"], CitySize);
-    //         strlcpy(targetData->countryCode, doc["country_code2"], CountryCodeSize);
-    //         strlcpy(targetData->timeZone, doc["time_zone"]["name"], TZSize);
-            
-    //         targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TX_OFFSET_INVALID;
-    //         targetData->latitude = doc["latitude"];
-    //         targetData->longitude = doc["longitude"];
-            
-    //         float unixTime = doc["time_zone"]["current_time_unix"];
-    //         if (!TimeUtils::isSynced() && unixTime != 0.0) {
-    //             targetData->unixTime = static_cast<time_t>(unixTime);
-    //             TimeUtils::setGMTTime(targetData->unixTime);
-    //         }
-
-    //         ipGeoCompleted = true;
-    //         aproximateLocationAsync = false;
-    //         requestInProgress = false;
-    //     }
-
-    //     void parseCloudflareResponse(const String& response) {
-    //         JsonDocument doc;
-    //         deserializeJson(doc, response);
-            
-    //         strlcpy(targetData->country, doc["country"], CountrySize);
-    //         strlcpy(targetData->city, doc["city"], CitySize);
-    //         targetData->latitude = doc["latitude"];
-    //         targetData->longitude = doc["longitude"];
-
-    //         cloudflareCompleted = true;
-    //         requestInProgress = false;
-    //     }
-
-    //     void sendNextRequest() {
-    //         if (useIpGeoService) {
-    //             String url = "https://api.ipgeolocation.io/ipgeo?apiKey=" + String(geoKey);
-    //             //Serial.println("Sending IPGeo request: " + url);
-                
-    //             httpsClient.get(url, 
-    //                 nullptr,
-    //                 nullptr,
-    //                 [this]() {
-    //                     if (httpsClient.getStatusCode() == 200) {
-    //                         parseIpGeoResponse(httpsClient.getBody());
-    //                     } else {
-    //                         Serial.printf("IPGeo request failed: %d\n", httpsClient.getStatusCode());
-    //                         useIpGeoService = false; // Переключаемся на Cloudflare
-    //                         sendNextRequest();
-    //                     }
-    //                 },
-    //                 [this](const String& error) {
-    //                     Serial.println("IPGeo error: " + error);
-    //                     useIpGeoService = false; // Переключаемся на Cloudflare
-    //                     sendNextRequest();
-    //                 }
-    //             );
-    //         } else {
-    //             Serial.println("Sending Cloudflare request");
-                
-    //             httpsClient.get("https://speed.cloudflare.com/meta",
-    //                 nullptr,
-    //                 nullptr,
-    //                 [this]() {
-    //                     if (httpsClient.getStatusCode() == 200) {
-    //                         parseCloudflareResponse(httpsClient.getBody());
-    //                     } else {
-    //                         Serial.printf("Cloudflare request failed: %d\n", httpsClient.getStatusCode());
-    //                         requestInProgress = false;
-    //                     }
-    //                 },
-    //                 [this](const String& error) {
-    //                     Serial.println("Cloudflare error: " + error);
-    //                     requestInProgress = false;
-    //                 }
-    //             );
-    //         }
-    //     }
-
-    // public:
-    //     void begin(GeoData* data, const char* key) {
-    //         targetData = data;
-    //         geoKey = key;
-    //         httpsClient.setInsecureMode(true);
-    //         httpsClient.setTimeout(10000); // 10 секунд таймаут
-    //     }
-
-    //     RequestGeoAsync::Error update() {
-    //         if (WiFi.status() != WL_CONNECTED) return RequestGeoAsync::NoConnection;
-            
-    //         httpsClient.update();
-            
-    //         if (!requestInProgress && !ipGeoCompleted && !cloudflareCompleted) {
-    //             requestInProgress = true;
-    //             sendNextRequest();
-    //             return RequestGeoAsync::Pending;
-    //         }
-            
-    //         if (ipGeoCompleted || cloudflareCompleted) {
-    //             return RequestGeoAsync::OK;
-    //         }
-            
-    //         // Если запрос завис, попробуем снова после таймаута
-    //         if (millis() - lastRetryTime > GEO_RETRY_INTERVAL) {
-    //             lastRetryTime = millis();
-    //             httpsClient.reset();
-    //             requestInProgress = false;
-    //             useIpGeoService = true; // Сброс к первоначальному сервису
-    //             return update();
-    //         }
-            
-    //         return RequestGeoAsync::Pending;
-    //     }
-    // };
-
 
     class GeoRequest {
         private:
@@ -195,7 +73,7 @@ namespace GeoLocationAsync {
             void parseIpGeoResponse(const String& response) {
                 JsonDocument doc;
                 if (deserializeJson(doc, response)) {
-                    Serial.println("Failed to parse IPGeo response");
+                    pointStop(0,"Failed to parse IPGeo response\n");
                     return;
                 }
         
@@ -219,13 +97,13 @@ namespace GeoLocationAsync {
                 requestInProgress = false;
                 waitingResponse = false;
                 
-                Serial.println("Got precise location from IPGeo");
+                pointStop(0, "Got precise location from IPGeo\n");
             }
         
             void parseCloudflareResponse(const String& response) {
                 JsonDocument doc;
                 if (deserializeJson(doc, response)) {
-                    Serial.println("Failed to parse Cloudflare response");
+                    pointStop(0,"Failed to parse Cloudflare response\n");
                     return;
                 }
         
@@ -238,7 +116,7 @@ namespace GeoLocationAsync {
                 waitingResponse = false;
                 aproximateLocationAsync = true;
                 
-                Serial.println("Got approximate location from Cloudflare");
+               pointStop(0,"Got approximate location from Cloudflare\n");
             }
         
             void sendIpGeoRequest() {
@@ -246,8 +124,7 @@ namespace GeoLocationAsync {
                 strcpy(url, "https://api.ipgeolocation.io/ipgeo?apiKey=");
                 strcat_P(url, geoKey);
                 
-                Serial.print("Sending IPGeo request: ");
-                Serial.println(url);
+                pointStop(0,"Sending IPGeo request: %s\n", url);
         
                 httpsClient.get(url, 
                     nullptr,
@@ -256,13 +133,12 @@ namespace GeoLocationAsync {
                         if (httpsClient.getStatusCode() == 200) {
                             parseIpGeoResponse(httpsClient.getBody());
                         } else {
-                            Serial.println("IPGeo request failed, trying Cloudflare...");
+                            pointStop(0,"IPGeo request failed, trying Cloudflare...\n");
                             sendCloudflareRequest();
                         }
                     },
                     [this](const String& error) {
-                        Serial.print("IPGeo request error: ");
-                        Serial.println(error);
+                        pointStop(0,"IPGeo request error: %s\n", error.c_str());
                         sendCloudflareRequest();
                     }
                 );
@@ -273,7 +149,7 @@ namespace GeoLocationAsync {
             }
         
             void sendCloudflareRequest() {
-                Serial.println("Sending Cloudflare request");
+                pointStop(0,"Sending Cloudflare request\n");
                 
                 httpsClient.get("https://speed.cloudflare.com/meta",
                     nullptr,
@@ -282,13 +158,12 @@ namespace GeoLocationAsync {
                         if (httpsClient.getStatusCode() == 200) {
                             parseCloudflareResponse(httpsClient.getBody());
                         } else {
-                            Serial.println("Cloudflare request failed");
+                            pointStop(0,"Cloudflare request failed\n");
                             requestInProgress = false;
                         }
                     },
                     [this](const String& error) {
-                        Serial.print("Cloudflare request error: ");
-                        Serial.println(error);
+                        pointStop(0,"Cloudflare request error: %s\n", error.c_str());
                         requestInProgress = false;
                     }
                 );
@@ -302,8 +177,8 @@ namespace GeoLocationAsync {
             void begin(GeoData* data, const char* key) {
                 targetData = data;
                 geoKey = key;
-                httpsClient.setInsecureMode(true);
-                httpsClient.setTimeout(15000);
+                // httpsClient.setInsecureMode(true);
+                // httpsClient.setTimeout(15000);
             }
         
             RequestGeoAsync::Error update() {
@@ -319,6 +194,7 @@ namespace GeoLocationAsync {
         
                 // Первый запрос при инициализации
                 if (!requestInProgress && !waitingResponse && lastRequestTime == 0) {
+                    
                     if (geoKey != nullptr) {
                         sendIpGeoRequest();
                     } else {
@@ -367,15 +243,17 @@ namespace GeoLocationAsync {
     }
 
 
-    RequestGeoAsync::Error getLocation(GeoData &data, Adafruit_PCD8544 * display = nullptr)
+    RequestGeoAsync::Error waitLocationReceived(GeoData &data, Adafruit_PCD8544 * display = nullptr)
     {        
         printDots(display);
         geoRequester.begin(&myLocation, eepromSets.getGeoKey());
-    
+        RequestGeoAsync::Error _lastStatus;
         while (true) {
+            
             auto status = geoRequester.update();
             
             switch (status) {
+                
                 case RequestGeoAsync::OK:
                     if (aproximateLocationAsync) {
                         Serial.print("Approximate location: ");
@@ -386,263 +264,35 @@ namespace GeoLocationAsync {
                     return status;
                     
                 case RequestGeoAsync::NoConnection:
-                    Serial.println("Waiting for network...");
+                    if ( _lastStatus != status) {
+                        pointStop(0,"Waiting for network...\n");
+                        _lastStatus = status;
+                    }
                     break;
                     
                 case RequestGeoAsync::Pending:
-                    Serial.println("Waiting for response...");
+                    if ( _lastStatus != status) {
+                        pointStop(0,"Waiting for response...\n");
+                        _lastStatus = status;
+                    }
                     break;
                     
                 case RequestGeoAsync::NoData:
-                    Serial.println("No location data yet");
+                    if ( _lastStatus != status) {
+                        pointStop(0,"No location data yet\n");
+                        _lastStatus = status;
+                    }
                     break;
+                default:
+                    geoRequester.reset();
+                    status = RequestGeoAsync::Error::NoConnection;
             }
             
             delay(100);
             printDots(display);
         }
 
-        // Request::Error err = Request::Error::ErrorData;
-        // // if ( Key::has() ){
-        // //     err = getLocation_IpGeo(data, Key::get() );
-        // if ( eepromSets.getGeoKey() != nullptr ){
-        //     err = getLocation_IpGeo(data, eepromSets.getGeoKey() );
-        // }
-
-        // if ( err != Request::Error::OK ) {
-        //     err =  getLocation_speedCloudflare(data);
-        // } else {
-        //     aproximateLocation = false;
-        // }
-        // //err =  getLocation_speedCloudflare(data);
-        // if (!err && data.valid())
-        // {
-        //     data.printTo(Serial);
-        // } else {
-        //     Serial.print("Error:"); Serial.println(err);
-        // }
-        
-        // printDots(display);
-
-
-        // Serial.println("Result geo info:");
-        // data.printTo(Serial);
-
-        // return err;
     };
 
-    // RequestGeoAsync::Error getLocation(GeoData &data, const char * key) {
-    //     static bool initialized = false;
-    //     if (!initialized) {
-    //         geoRequester.begin(&data, key);
-    //         initialized = true;
-    //     }
-        
-    //     return geoRequester.update();
-    // }
 
-  
-
-    // #define MY_CREDENTIAL
-    // #include <my.h>
-
-    // void test() {
-    //     static const char* apiKey = "ewrwqr45234r32423523"; //APP_IPGEOLOCATION_IO_KEY; // Может быть nullptr
-    
-    //     if (!WiFi.isConnected()) {
-    //         while (!wm.autoConnect(CaptivePortal::name)) {
-    //             delay(100);
-    //         }
-    //     }
-        
-    //     Serial.println("Start location detection");
-    //     geoRequester.begin(&myLocation, apiKey);
-        
-    //     while (true) {
-    //         auto status = geoRequester.update();
-            
-    //         switch (status) {
-    //             case RequestGeoAsync::OK:
-    //                 if (aproximateLocationAsync) {
-    //                     Serial.print("Approximate location: ");
-    //                 } else {
-    //                     Serial.print("Precise location: ");
-    //                 }
-    //                 myLocation.printTo(Serial);
-    //                 return;
-                    
-    //             case RequestGeoAsync::NoConnection:
-    //                 Serial.println("Waiting for network...");
-    //                 break;
-                    
-    //             case RequestGeoAsync::Pending:
-    //                 Serial.println("Waiting for response...");
-    //                 break;
-                    
-    //             case RequestGeoAsync::NoData:
-    //                 Serial.println("No location data yet");
-    //                 break;
-    //         }
-            
-    //         delay(1000);
-    //     }
-    // }
-
-    // /////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // void parseIpGeoResponse(const String& response, GeoData* targetData) {
-    //     JsonDocument doc;
-    //     deserializeJson(doc, response);
-        
-    //     strlcpy(targetData->country, doc["country_name"], CountrySize);
-    //     strlcpy(targetData->city, doc["city"], CitySize);
-    //     strlcpy(targetData->countryCode, doc["country_code2"], CountryCodeSize);
-    //     strlcpy(targetData->timeZone, doc["time_zone"]["name"], TZSize);
-        
-    //     targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TX_OFFSET_INVALID;
-    //     targetData->latitude = doc["latitude"];
-    //     targetData->longitude = doc["longitude"];
-        
-    //     float unixTime = doc["time_zone"]["current_time_unix"];
-    //     if (!TimeUtils::isSynced() && unixTime != 0.0) {
-    //         targetData->unixTime = static_cast<time_t>(unixTime);
-    //         TimeUtils::setGMTTime(targetData->unixTime);
-    //     }
-
-    //     //ipGeoCompleted = true;
-    //     aproximateLocationAsync = false;
-    //     //requestInProgress = false;
-    // }
-
-
-    // void parseCloudflareResponse(const String& response, GeoData* targetData) {
-    //     JsonDocument doc;
-    //     deserializeJson(doc, response);
-        
-    //     strlcpy(targetData->country, doc["country"], CountrySize);
-    //     strlcpy(targetData->city, doc["city"], CitySize);
-    //     targetData->latitude = doc["latitude"];
-    //     targetData->longitude = doc["longitude"];
-
-    //     // cloudflareCompleted = true;
-    //     // requestInProgress = false;
-    // }
-    // void test2(){
-    //     constexpr unsigned long RequestPeriod = 1000U*60*5; //5 minutes
-    //     static auto lastRequest = millis()-RequestPeriod;
-    //     ClientState lastState;
-    //     ClientState state;
-
-
-    //     static const char apiKey[] PROGMEM = APP_IPGEOLOCATION_IO_KEY;
-    //     //static const char *apiKey = nullptr;
-
-    //     if (!WiFi.isConnected()) {
-    //         while (!wm.autoConnect(CaptivePortal::name)) {
-    //             delay(100);
-    //         }
-    //     }
-        
-    //     //static unsigned long startGeoRequest = millis();
-    //     Serial.println("Start get location");
-
-    //     static AsyncHttpsClient httpsClient;
-    //     httpsClient.setInsecureMode();
-    //     httpsClient.setTimeout(5000);
-
-    //     bool requestTimeout = (millis()-lastRequest) >= RequestPeriod;
-
-    //     Serial.printf("Api key=%s\nclient %s\n%s\n", apiKey, 
-    //         httpsClient.isBusy() ? "busy" : "free",
-    //         requestTimeout ? "start request" : "wait request time");
-
-    //     while (  aproximateLocationAsync ){
-    //         delay(1);
-    //         requestTimeout = (millis()-lastRequest) >= RequestPeriod;
-
-    //         if ( apiKey != nullptr &&  ! httpsClient.isBusy() && requestTimeout ){
-    //             //get ipGeo
-    //             Serial.println("REquest ipgeolocation");
-    //             delay(10);
-
-
-    //             static String url;
-    //             url = "https://api.ipgeolocation.io/ipgeo?apiKey=";
-    //             url += FPSTR( apiKey );
-    //             Serial.println( url );
-
-    //             httpsClient.get(url, 
-    //                 nullptr,
-    //                 nullptr,
-    //                 [&]() {
-    //                     if (httpsClient.getStatusCode() == 200) {
-    //                         Serial.println( httpsClient.getBody());
-    //                         parseIpGeoResponse(httpsClient.getBody(), &myLocation);
-    //                     } else {
-    //                         Serial.printf("IPGeo request failed: %d\n", httpsClient.getStatusCode());
-    //                         // useIpGeoService = false; // Переключаемся на Cloudflare
-    //                         // sendNextRequest();
-    //                     }
-    //                 },
-    //                 [&](const String& error) {
-    //                     Serial.println("IPGeo error: " + error);
-    //                     // useIpGeoService = false; // Переключаемся на Cloudflare
-    //                     // sendNextRequest();
-    //                 }
-    //             );
-    //             lastRequest=millis();
-
-    //         } 
-            
-    //         if( ! myLocation.valid() && ! httpsClient.isBusy() ) {
-    //                 // get cloudflare
-    //                 Serial.println( "cloudflare " );
-    //                 httpsClient.get("https://speed.cloudflare.com/meta",
-    //                     nullptr, nullptr,
-    //                     [&]() {
-    //                         Serial.printf("Cloudflare response: %d, Body: %s\n", 
-    //                             httpsClient.getStatusCode(), 
-    //                             httpsClient.getBody().c_str());
-    //                        Serial.printf("Headers: %s\n", httpsClient.getHeaders().c_str());
-               
-    //                         if (httpsClient.getStatusCode() == 200) {
-                                
-    //                             parseCloudflareResponse(httpsClient.getBody(), &myLocation);
-                                
-    //                         } else {
-    //                             Serial.printf("Cloudflare request failed: %d\n", httpsClient.getStatusCode());
-                                
-    //                         }
-    //                     },
-    //                     [&](const String& error) {
-    //                         Serial.println("Cloudflare error: " + error);
-                            
-    //                         // useIpGeoService = false; // Переключаемся на Cloudflare
-    //                         // sendNextRequest();
-    //                     }
-    //                 );
-                
-    //         }
-            
-    //         state = httpsClient.update();
-    //         if ( state != lastState ){
-    //             Serial.print("State="); Serial.println( (int)state);
-    //             lastState = state;
-    //         }
-
-
-    //         if ( state == ClientState::COMPLETE ) {
-    //             //httpsClient.update();
-    //             myLocation.printTo(Serial);
-
-    //             //httpsClient.reset();
-    //             Serial.println("Test done");
-    //             //while(1) delay(1);
-    //             //return;
-    //             state = ClientState::IDLE;
-    //             httpsClient.reset();
-    //         }
-    //     }
-
-    // }
 }

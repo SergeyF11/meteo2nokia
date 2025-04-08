@@ -102,6 +102,7 @@ namespace  TimeUtils {
                 toStr(
                     timeBuf, nowTm, (nowTm->tm_sec % 2) ? ' ' : ':', true)
                 );
+            
             return true;
         }
         return false;
