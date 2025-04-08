@@ -148,18 +148,19 @@ namespace Weather {
                     strcpy(Weather::data.cityName, utf8rus(_city).c_str());
                 
                 const char * desc =  doc["weather"][0]["description"];
-                pointStop(0, "Weather data updated:\n\tDescription: %s [%s]\n",  desc, data.iconCode);
+                Serial.println("Weather data updated");
+                pointStop(0, "\tDescription: %s [%s]\n",  desc, data.iconCode);
                 pointStop(0, "\n\tTemperature: %.1fC\n\tFeels like %.1fC\n", Weather::data.temp , Weather::data.tempFeel);
                 pointStop(0, "\n\tHumidity: %.0f%%\n\tPressure: %dmmHg\n",Weather::data.humidity, Weather::data.pressure);
                 pointStop(0, "\n\tCity name: '%s', tz=%d\n", _city.c_str(), data.timeZone);
 
             } else {
                 updateState = AsyncRequest::WrongPayload;
-                Serial.println("Error: wrong weather data JSON");
+                pointStop(0,"Error: wrong weather data JSON\n");
             }
         } else {
             updateState = AsyncRequest::FailRespond;
-            Serial.printf("Error: HTTP request failed [%d] %s\n", 
+            pointStop(0,"Error: HTTP request failed [%d] %s\n", 
                          httpsClient.getStatusCode(), httpsClient.getError().c_str());
         }
     };
@@ -211,7 +212,7 @@ namespace Weather {
                 nullptr, nullptr,
                 onRequestComplete,
                 [&](const String& error) {
-                    Serial.printf("Request error: %s\n", error.c_str());
+                    pointStop(0,"Request error: %s\n", error.c_str());
                     updateState = AsyncRequest::FailRespond;
                     httpsClient.reset();
                 }
@@ -498,6 +499,7 @@ namespace Weather {
     }
 
 
+    #ifdef WEATER_TEST
     void test(){
         String url("https://api.openweathermap.org/data/2.5/weather?lat=55.76176&lon=37.86130&lang=ru&units=metric&appid=");
         url += eepromSets.getWeatherKey();
@@ -535,4 +537,5 @@ namespace Weather {
         }
 
     }
+    #endif
 }; // namespace Weather

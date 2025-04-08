@@ -193,6 +193,7 @@ void inline printDots(Adafruit_PCD8544 *display, const byte *icon =  WiFi_Icon::
     printDots(*display, icon, textSize);
 };
 
+#idef DISPAY_TEST
 namespace TestChars
 {
   static long delayMs = 1000;
@@ -236,6 +237,7 @@ namespace TestChars
   };
 
 };
+#endif
 
 extern Adafruit_PCD8544 display1;
 extern Adafruit_PCD8544 display2;
