@@ -84,50 +84,51 @@ namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
 
-  bool validateOpenWeatherKey(const String& apiKey ){
-    if (apiKey.isEmpty() || apiKey.length() < 32) {
-      return false; // Базовая проверка длины ключа
-    }
+  // bool validateOpenWeatherKey(const String& apiKey ){
+  //   if (apiKey.isEmpty() || apiKey.length() < 32) {
+  //     return false; // Базовая проверка длины ключа
+  //   }
 
-    // Используем существующий клиент из weather_async.h
-    if (httpsClient.isBusy()) {
-        return false; // Клиент уже занят
-    }
+  //   // Используем существующий клиент из weather_async.h
+  //   if (httpsClient.isBusy()) {
+  //       return false; // Клиент уже занят
+  //   }
 
-    bool validationResult = false;
-    bool requestCompleted = false;
+  //   bool validationResult = false;
+  //   bool requestCompleted = false;
 
-    String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
+  //   String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
 
-    httpsClient.get(testUrl, 
-            nullptr, // Обработчик заголовков не нужен
-            nullptr, // Обработчик чанков не нужен
-            [&validationResult, &requestCompleted]() {
-                // Коллбек успешного завершения
-                if (httpsClient.getStatusCode() == 200) {
-                    String payload = httpsClient.getBody();
-                    JsonDocument doc;
-                    if (deserializeJson(doc, payload)) {
-                        validationResult = doc["weather"].is<JsonArray>();
-                    }
-                }
-                requestCompleted = true;
-            },
-            [&requestCompleted](const String& error) {
-                // Коллбек ошибки
-                requestCompleted = true;
-            }
-        );
+  //   httpsClient.get(testUrl, 
+  //           nullptr, // Обработчик заголовков не нужен
+  //           nullptr, // Обработчик чанков не нужен
+  //           [&validationResult, &requestCompleted]() {
+  //               // Коллбек успешного завершения
+  //               if (httpsClient.getStatusCode() == 200) {
+  //                   String payload = httpsClient.getBody();
+  //                   JsonDocument doc;
+  //                   if (deserializeJson(doc, payload)) {
+  //                       validationResult = doc["weather"].is<JsonArray>();
+  //                   }
+  //               }
+  //               requestCompleted = true;
+  //           },
+  //           [&requestCompleted](const String& error) {
+  //               // Коллбек ошибки
+  //               requestCompleted = true;
+  //           }
+  //       );
 
-    unsigned long start = millis();
-    while (!requestCompleted && (millis() - start < 5000)) {
-        httpsClient.update();
-        delay(10);
-    }
+  //   unsigned long start = millis();
+  //   while (!requestCompleted && (millis() - start < 5000)) {
+  //       httpsClient.update();
+  //       delay(10);
+  //   }
 
-    httpsClient.reset(); // Очищаем состояние клиента
-    return validationResult;
-  }
+  //   httpsClient.reset(); // Очищаем состояние клиента
+  //   return validationResult;
+  // }
+
   bool validateOpenWeatherKey(const String& apiKey) {
     if (apiKey.isEmpty() || apiKey.length() < 32) {
       pointStop(0, "Wrong key length\n");
@@ -348,7 +349,7 @@ namespace Reconnect
   static Data saved;
 
   bool isSaved(){ return saved._localIP.isSet(); };
-  bool isValid(){ return saved._localIP.isSet(); };
+  //bool isValid(){ return saved._localIP.isSet(); };
 
   size_t bssidPrintTo(Print &p)
   {
@@ -443,32 +444,32 @@ void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
   }
 }
 
-void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
-{
+// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
+// {
 
-void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
-  printDots(display, WiFi_Icon::_bmp, 2);
+// void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
+//   printDots(display, WiFi_Icon::_bmp, 2);
   
-  // Попытка быстрого подключения к сохраненной сети
-  if (!WiFi.isConnected()&& Reconnect::isValid() )
-  {
-    Reconnect::connect();
-    while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
-          delay(10);
-          each(500, printDots(display, WiFi_Icon::_bmp, 2));
-      }
-  }
+//   // Попытка быстрого подключения к сохраненной сети
+//   if (!WiFi.isConnected()&& Reconnect::isValid() )
+//   {
+//     Reconnect::connect();
+//     while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
+//           delay(10);
+//           each(500, printDots(display, WiFi_Icon::_bmp, 2));
+//       }
+//   }
 
-  // Если быстрое подключение не удалось или нужна настройка
-  if (!wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
-      CaptivePortal::processPortal(display);
-  }
+//   // Если быстрое подключение не удалось или нужна настройка
+//   if (!wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
+//       CaptivePortal::processPortal(display);
+//   }
 
-  // Сохраняем параметры подключения
-  if (WiFi.isConnected()) {
-      Reconnect::save(WiFi.SSID(), WiFi.psk());
-  }
-}
+//   // Сохраняем параметры подключения
+//   if (WiFi.isConnected()) {
+//       Reconnect::save(WiFi.SSID(), WiFi.psk());
+//   }
+// }
 
 // void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
 // {
@@ -535,7 +536,7 @@ bool wiFiSleep(){
   if( wifiInSleepMode ) pointStop(0, "WiFi disconnected\n");
   
   wifiInSleepMode &= WiFi.forceSleepBegin(1000UL * weatherUpdateInterval);  // Отключить Wi-Fi
-  if( wifiInSleepMode ) pointStop(0, "WiFi Sleeped\n");
+  if( wifiInSleepMode ) Serial.println("WiFi sleeped" ); //(0, "WiFi Sleeped\n");
 
   return wifiInSleepMode;
 }
