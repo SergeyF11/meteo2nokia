@@ -18,6 +18,19 @@ WiFiManagerParameter openWeatherApiKeyParam; //("apiKey", "OpenWeather API key",
 WiFiManagerParameter geolocationApiKeyParam;
 
 
+#define each(ms, func)                       \
+  {                                          \
+    static unsigned long startMs = millis(); \
+    if (millis() - startMs >= (ms))          \
+    {                                        \
+      startMs = millis();                    \
+      {                                      \
+        func;                                \
+      }                                      \
+    }                                        \
+  }
+
+
 SliderControl *contrD1;
 SliderControl *contrD2;
 
@@ -38,8 +51,10 @@ extern const char timeZone[];
 extern WiFiManager wm;
 const unsigned long connectionTime = 10000UL;
 volatile bool isSettingsValid = false;
+volatile bool isOpenWeatherKeyValid = false;
 
 MultiResetDetector tripleReset;
+extern AsyncHttpsClient httpsClient;
 
 // Глобальные переменные для хранения настроек
 extern EepromData eepromSets;
@@ -47,16 +62,90 @@ extern EepromData eepromSets;
 namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
- 
+
+  bool validateOpenWeatherKey(const String& apiKey) {
+    if (apiKey.isEmpty() || apiKey.length() < 32) {
+      pointStop(0, "Wrong key length\n");
+        return false; // Базовая проверка длины ключа
+    }
+
+    // Используем существующий клиент из weather_async.h
+  
+    
+    if (httpsClient.isBusy()) {
+      pointStop(0, "Https client busy\n");
+        return false; // Клиент уже занят
+    }
+    httpsClient.setInsecureMode();
+    httpsClient.setTimeout(3000);
+    // Создаем тестовый запрос (аналогично weather_async.h)
+    String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
+    
+    bool validationResult = false;
+    bool requestCompleted = false;
+
+    pointStop(0,"Send request %s\n", testUrl.c_str());
+    httpsClient.get(testUrl, 
+        nullptr, // Обработчик заголовков не нужен
+        nullptr, // Обработчик чанков не нужен
+        [&]() {
+            // Коллбек успешного завершения
+            if (httpsClient.getStatusCode() == 200) {
+                String payload = httpsClient.getBody();
+                Serial.println( payload);
+                
+                JsonDocument doc;
+                auto err = deserializeJson(doc, payload);
+                if ( err.code() == ArduinoJson::DeserializationError::Ok ) {
+                 
+                  validationResult = doc["weather"].is<JsonArray>(); 
+
+                } else {
+                  pointStop(0, "%s\n", err.c_str() );
+                }
+            } else {
+              pointStop(0,"Error request: %d\n", httpsClient.getStatusCode());
+            }
+            pointStop(0, "Key is %s\n", validationResult ? "valid" : "invalid");
+            requestCompleted = true;
+        },
+        [&requestCompleted](const String& error) {
+            // Коллбек ошибки
+            requestCompleted = true;
+            pointStop(0, "Wrong response\n");
+        }
+    );
+
+    // Ждем завершения запроса с таймаутом
+    
+    while (!requestCompleted ) {
+        httpsClient.update();
+        delay(10);
+    }
+
+    httpsClient.reset(); // Очищаем состояние клиента
+    return validationResult;
+}
 
   void saveParamsCallback()
   {
+    pointStop(0,"Start\n");
 
+    bool keyValid = false;
     isSettingsValid = eepromSets.init(
                 openWeatherApiKeyParam.getValue(),
                 geolocationApiKeyParam.getValue(),
-                contrD1->getValue(), contrD2->getValue()) &&
-                eepromSets.save();
+                contrD1->getValue(), contrD2->getValue());
+                
+    if( isSettingsValid ){
+      isOpenWeatherKeyValid = validateOpenWeatherKey( eepromSets.getWeatherKey() );
+    }
+
+    if( isOpenWeatherKeyValid ){
+      isSettingsValid =  eepromSets.save();
+    } else {
+      isSettingsValid = false;
+    }
 
     if ( ! isSettingsValid ){
       Serial.println("error: save eeprom");
@@ -65,7 +154,7 @@ namespace CaptivePortal
                     openWeatherApiKeyParam.getValue());
       Serial.printf("Len %d, value '%s', %s",
                     strlen(eepromSets.getWeatherKey()),
-                    eepromSets.getWeatherKey(), eepromSets.valid() ? "valid" : "invalid");
+                    eepromSets.getWeatherKey(), isOpenWeatherKeyValid ? "valid" : "invalid");
     }
   };
 
@@ -136,24 +225,53 @@ namespace CaptivePortal
 
         
     wm.setSaveParamsCallback(saveParamsCallback);
+    
     wm.setTitle(name);
     
     wm.setConfigPortalTimeout(180);
   };
+
+  void processPortal(Adafruit_PCD8544* display) {
+    ArduinoOTA.setHostname(CaptivePortal::name);
+    OTA::setup();
+    
+    while (true) {
+      delay(0);
+        if (!wm.getConfigPortalActive()) {
+            if (tripleReset.isTriggered()) {
+                tripleReset.clearTrigger();
+            } else {
+              isOpenWeatherKeyValid = validateOpenWeatherKey( eepromSets.getWeatherKey() );
+              pointStop(0,"Settings is %s, key is %s, WiFi %s\n", 
+                  isSettingsValid? "valid":"invalid", 
+                  isOpenWeatherKeyValid ? "valid" : "invalid",
+                  WiFi.isConnected() ? "connected": "not connected" );
+                  if (WiFi.status() == WL_CONNECTED && 
+                      isSettingsValid && isOpenWeatherKeyValid ) {
+                      break;
+                  }
+            }
+            wm.startConfigPortal(CaptivePortal::name);
+        }
+
+        wm.process();
+
+        OTA::handle();
+        
+        // Проверяем условия выхода
+        if (WiFi.status() == WL_CONNECTED && 
+            isSettingsValid && isOpenWeatherKeyValid ) {
+            break;
+        }
+        
+        
+        each(500, printDots(display, WiFi_Icon::_bmp, 2));
+    }
+  }
+
 };
 
 
-#define each(ms, func)                       \
-  {                                          \
-    static unsigned long startMs = millis(); \
-    if (millis() - startMs >= (ms))          \
-    {                                        \
-      startMs = millis();                    \
-      {                                      \
-        func;                                \
-      }                                      \
-    }                                        \
-  }
 
 bool wifiInSleepMode = false;
 
@@ -173,6 +291,7 @@ namespace Reconnect
   };
   // Параметры соединения (хранятся только в оперативной памяти)
   static Data saved;
+  bool isValid(){ return saved._localIP.isSet(); };
 
   size_t bssidPrintTo(Print &p)
   {
@@ -242,63 +361,88 @@ namespace Reconnect
 
 }; // namespace Reconnect
 
-void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
-{
 
+void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
   printDots(display, WiFi_Icon::_bmp, 2);
-  if (!WiFi.isConnected())
+  
+  // Попытка быстрого подключения к сохраненной сети
+  if (!WiFi.isConnected()&& Reconnect::isValid() )
   {
     Reconnect::connect();
-    while (!WiFi.isConnected() && !Reconnect::waitTimeout())
-    {
-      delay(10);
-      each(500, printDots(display, WiFi_Icon::_bmp, 2));
-    }
+    while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
+          delay(10);
+          each(500, printDots(display, WiFi_Icon::_bmp, 2));
+      }
   }
 
-  if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
-  { //}, "atheration")){
-    Serial.println("connected...");
-  } else  {
-    // needExitConfigPortal = false;
-    Serial.println("Config portal running");
-    
-    ArduinoOTA.setHostname( CaptivePortal::name );
-    OTA::setup();
-
-
-    while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
-    {
-      if (!wm.getConfigPortalActive())
-      {
-        if (tripleReset.isTriggered())
-        {
-          static bool resetTriple = false;
-          
-          if (resetTriple)
-            tripleReset.clearTrigger();
-          else
-            resetTriple = tripleReset.isTriggered();
-        }
-        Serial.println("Restart portal on demand");
-        wm.startConfigPortal(CaptivePortal::name);
-      }
-
-      if (wm.process())
-      {
-        pointStop(0, "Status changed\n");
-      }
-      OTA::handle();
-      each(500, printDots(display, WiFi_Icon::_bmp, 2));
-    }
-
-    pointStop(0, "Key is %s and WiFi is %s\n",
-      isSettingsValid ? "valid" : "invalid",
-              WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
+  // Если быстрое подключение не удалось или нужна настройка
+  if (!wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
+      CaptivePortal::processPortal(display);
   }
-  if (WiFi.isConnected())
-    Reconnect::save(WiFi.SSID(), WiFi.psk());
+
+  // Сохраняем параметры подключения
+  if (WiFi.isConnected()) {
+      Reconnect::save(WiFi.SSID(), WiFi.psk());
+  }
 }
+
+// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
+// {
+
+//   printDots(display, WiFi_Icon::_bmp, 2);
+//   if (!WiFi.isConnected() && Reconnect::isValid() )
+//   {
+//     Reconnect::connect();
+//     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
+//     {
+//       delay(10);
+//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+//     }
+//   }
+
+//   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
+//   { //}, "atheration")){
+//     Serial.println("connected...");
+//   } else  {
+//     // needExitConfigPortal = false;
+//     Serial.println("Config portal running");
+    
+//     ArduinoOTA.setHostname( CaptivePortal::name );
+//     OTA::setup();
+
+
+//     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
+//     {
+//       if (!wm.getConfigPortalActive())
+//       {
+//         if (tripleReset.isTriggered())
+//         {
+//           static bool resetTriple = false;
+          
+//           if (resetTriple)
+//             tripleReset.clearTrigger();
+//           else
+//             resetTriple = tripleReset.isTriggered();
+//         }
+//         Serial.println("Restart portal on demand");
+//         wm.startConfigPortal(CaptivePortal::name);
+//       }
+
+//       if (wm.process())
+//       {
+//         pointStop(0, "Status changed\n");
+//       }
+//       OTA::handle();
+//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+//     }
+
+//     pointStop(0, "Key is %s and WiFi is %s\n",
+//       isSettingsValid ? "valid" : "invalid",
+//               WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
+//   }
+//   if (WiFi.isConnected())
+//     Reconnect::save(WiFi.SSID(), WiFi.psk());
+// }
 
 
 extern const unsigned long weatherUpdateInterval;
