@@ -84,51 +84,7 @@ namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
 
-  // bool validateOpenWeatherKey(const String& apiKey ){
-  //   if (apiKey.isEmpty() || apiKey.length() < 32) {
-  //     return false; // Базовая проверка длины ключа
-  //   }
-
-  //   // Используем существующий клиент из weather_async.h
-  //   if (httpsClient.isBusy()) {
-  //       return false; // Клиент уже занят
-  //   }
-
-  //   bool validationResult = false;
-  //   bool requestCompleted = false;
-
-  //   String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
-
-  //   httpsClient.get(testUrl, 
-  //           nullptr, // Обработчик заголовков не нужен
-  //           nullptr, // Обработчик чанков не нужен
-  //           [&validationResult, &requestCompleted]() {
-  //               // Коллбек успешного завершения
-  //               if (httpsClient.getStatusCode() == 200) {
-  //                   String payload = httpsClient.getBody();
-  //                   JsonDocument doc;
-  //                   if (deserializeJson(doc, payload)) {
-  //                       validationResult = doc["weather"].is<JsonArray>();
-  //                   }
-  //               }
-  //               requestCompleted = true;
-  //           },
-  //           [&requestCompleted](const String& error) {
-  //               // Коллбек ошибки
-  //               requestCompleted = true;
-  //           }
-  //       );
-
-  //   unsigned long start = millis();
-  //   while (!requestCompleted && (millis() - start < 5000)) {
-  //       httpsClient.update();
-  //       delay(10);
-  //   }
-
-  //   httpsClient.reset(); // Очищаем состояние клиента
-  //   return validationResult;
-  // }
-
+  
   bool validateOpenWeatherKey(const String& apiKey) {
     if (apiKey.isEmpty() || apiKey.length() < 32) {
       pointStop(0, "Wrong key length\n");
@@ -238,12 +194,7 @@ namespace CaptivePortal
     wm.setConfigPortalBlocking(false);
 
   
-    //char html[1024];
-    // snprintf(portalHtml, sizeof(portalHtml), slider_html,
-    //          loadedData.getContrast1(), loadedData.getContrast1(),
-    //          loadedData.getContrast2(), loadedData.getContrast2());
   
-
     new (&openWeatherApiKeyParam) WiFiManagerParameter(
         "weatherKey", "OpenWeather API key",
         loadedData.getWeatherKey(), API_KEY_SIZE + 1,
@@ -283,10 +234,6 @@ namespace CaptivePortal
     wm.addParameter(new WiFiManagerParameter(contrD1->getHTML()));
     wm.addParameter(new WiFiManagerParameter(contrD2->getHTML()));
 
-    // wm.setWebServerCallback([](){ 
-    //   pointStop(0,"Server pointer=%x\n", &(wm.server));
-    //   wm.server->on(SliderControl::httpPath, SliderControl::webServerCallback); } );
-    
     
     pointStop(0, "Add handler\n");
     //SliderControlI::init(wm, {contrD1, contrD2});
@@ -309,19 +256,29 @@ namespace CaptivePortal
         if (!wm.getConfigPortalActive()) {
             if (tripleReset.isTriggered()) {
                 tripleReset.clearTrigger();
-            }
-            wm.startConfigPortal(CaptivePortal::name);
-        }
+              } else {
+                isOpenWeatherKeyValid = validateOpenWeatherKey( eepromSets.getWeatherKey() );
+                pointStop(0,"Settings is %s, key is %s, WiFi %s\n", 
+                    isSettingsValid? "valid":"invalid", 
+                    isOpenWeatherKeyValid ? "valid" : "invalid",
+                    WiFi.isConnected() ? "connected": "not connected" );
+                    if (WiFi.status() == WL_CONNECTED && 
+                        isSettingsValid && isOpenWeatherKeyValid ) {
+                        break;
+                    }
+              }
+              wm.startConfigPortal(CaptivePortal::name);
+          }
   
-        wm.process();
-        OTA::handle();
-        
-        // Проверяем условия выхода
-        if (WiFi.status() == WL_CONNECTED && 
-            isSettingsValid && 
-            validateOpenWeatherKey(openWeatherApiKeyParam.getValue())) {
-            break;
-        }
+          wm.process();
+  
+          OTA::handle();
+          
+          // Проверяем условия выхода
+          if (WiFi.status() == WL_CONNECTED && 
+              isSettingsValid && isOpenWeatherKeyValid ) {
+              break;
+          }
         
         each(500, printDots(display, WiFi_Icon::_bmp, 2));
     }
@@ -443,92 +400,6 @@ void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
       Reconnect::save(WiFi.SSID(), WiFi.psk());
   }
 }
-
-// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
-// {
-
-// void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
-//   printDots(display, WiFi_Icon::_bmp, 2);
-  
-//   // Попытка быстрого подключения к сохраненной сети
-//   if (!WiFi.isConnected()&& Reconnect::isValid() )
-//   {
-//     Reconnect::connect();
-//     while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
-//           delay(10);
-//           each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//       }
-//   }
-
-//   // Если быстрое подключение не удалось или нужна настройка
-//   if (!wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
-//       CaptivePortal::processPortal(display);
-//   }
-
-//   // Сохраняем параметры подключения
-//   if (WiFi.isConnected()) {
-//       Reconnect::save(WiFi.SSID(), WiFi.psk());
-//   }
-// }
-
-// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
-// {
-
-//   printDots(display, WiFi_Icon::_bmp, 2);
-//   if (!WiFi.isConnected() && Reconnect::isValid() )
-//   {
-//     Reconnect::connect();
-//     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
-//     {
-//       delay(10);
-//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//     }
-//   }
-
-//   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
-//   { //}, "atheration")){
-//     Serial.println("connected...");
-//   } else  {
-//     // needExitConfigPortal = false;
-//     Serial.println("Config portal running");
-    
-//     ArduinoOTA.setHostname( CaptivePortal::name );
-//     OTA::setup();
-
-
-//     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
-//     {
-//       if (!wm.getConfigPortalActive())
-//       {
-//         if (tripleReset.isTriggered())
-//         {
-//           static bool resetTriple = false;
-          
-//           if (resetTriple)
-//             tripleReset.clearTrigger();
-//           else
-//             resetTriple = tripleReset.isTriggered();
-//         }
-//         Serial.println("Restart portal on demand");
-//         wm.startConfigPortal(CaptivePortal::name);
-//       }
-
-//       if (wm.process())
-//       {
-//         pointStop(0, "Status changed\n");
-//       }
-//       OTA::handle();
-//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//     }
-
-//     pointStop(0, "Key is %s and WiFi is %s\n",
-//       isSettingsValid ? "valid" : "invalid",
-//               WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
-//   }
-//   if (WiFi.isConnected())
-//     Reconnect::save(WiFi.SSID(), WiFi.psk());
-// }
-
 
 extern const unsigned long weatherUpdateInterval;
 bool wiFiSleep(){
