@@ -2,9 +2,14 @@
 // #include <MultyPCD8544.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_PCD8544_multi.h>
+
 #include "wifi_icon.h"
 // #include "FontsRus/FreeMonoBold6.h"
 // #include "FontsRus/FreeMonoBold12.h"
+#include "FontsEn/FreeMonoBold24pt7b.h"  //MonoBoldOblique24pt7b.h"
+#include "FontsEn/FreeMonoBold12pt7b.h"
+// #include "FontsRus/"
+// #include "FontsRus/CrystalNormal14.h"
 #include "eeprom_utils.h"
 #include "icons_sign.h"
 
@@ -193,7 +198,8 @@ void inline printDots(Adafruit_PCD8544 *display, const byte *icon =  WiFi_Icon::
     printDots(*display, icon, textSize);
 };
 
-#ifdef DISPAY_TEST
+#define DISPLAY_TEST
+#ifdef DISPLAY_TEST
 namespace TestChars
 {
   static long delayMs = 1000;
@@ -237,12 +243,24 @@ namespace TestChars
   };
 
 };
+
+
 #endif
 
 extern Adafruit_PCD8544 display1;
 extern Adafruit_PCD8544 display2;
 // extern MultiPCD8544 display1;
 // extern MultiPCD8544 display2;
+
+inline uint16_t getFontHeight(Adafruit_PCD8544& display, const GFXfont* font, const uint8_t size = 1){
+  int16_t x = 0, y = 0;
+  uint16_t w, h;
+  display.setFont(font);
+  display.setTextSize(size);
+  display.getTextBounds("0", 0, 0, &x, &y, &w, &h); // Получаем высоту 'A'
+  return h;
+}
+
 namespace displays
 {
   void setContrast(const int idx, const uint8_t c, Print* p=nullptr)

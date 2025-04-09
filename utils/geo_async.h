@@ -46,10 +46,10 @@ namespace GeoLocationAsync {
         float longitude;
         time_t unixTime;
         
-        bool valid() { return city[0] != '\0'; }
-        bool validOffset() { return tzOffset != TX_OFFSET_INVALID; }
+        bool valid() const { return city[0] != '\0'; }
+        bool validOffset() const { return tzOffset != TX_OFFSET_INVALID; }
 
-        size_t printTo(Print &p)
+        size_t printTo(Print &p) const 
         {
             size_t printed = p.printf("CountryCode: %s, City: %s, Lat:%f, Long:%f\nTimeZone:%s\n",
                                       countryCode, city, latitude, longitude, timeZone);

@@ -107,5 +107,78 @@ namespace  TimeUtils {
         }
         return false;
     };
+
+
+void printTo(Adafruit_PCD8544& displayHours, Adafruit_PCD8544& displayMinutes, const GFXfont *font, const uint8_t size=1,
+    const GFXfont* fontS=nullptr, const uint8_t sizeS=1){
+  static int lastHours = -99;
+  static int lastPrint = -1;
+
+  auto now = time(nullptr);
+  nowTm = localtime( &now );
+
+  if ( isSynced() && lastPrint != nowTm->tm_sec ) { 
+    if ( -1 == lastPrint || nowTm->tm_sec == 0 )
+        Serial.printf("Current time %2u:%02u:%02u\n", 
+            nowTm->tm_hour, nowTm->tm_min, nowTm->tm_sec );
+
+
+    if ( lastHours != nowTm->tm_hour){
+
+        displayHours.clearDisplay();
+        lastHours = nowTm->tm_hour;
+
+        displayHours.setFont( font );
+        displayHours.setTextSize(size);
+
+        displayHours.setCursor( nowTm->tm_hour <10 ? 50 : 30,
+                                40);
+        
+
+        //if ( nowTm->tm_hour <10 ) displayMinutes.print(' ');
+        displayHours.print( nowTm->tm_hour );
+        displayHours.display();
+    }
+    
+    if ( lastPrint != nowTm->tm_sec){ 
+        lastPrint = nowTm->tm_sec;
+        // displayMinutes.setCursor(-10, 0);
+        // displayMinutes.print(':');
+
+        displayMinutes.clearDisplay();
+        //
+
+        displayMinutes.setFont( font );
+        displayMinutes.setTextSize(size);
+        displayMinutes.setCursor(0,40);
+        //displayMinutes.setTextSize(2);
+
+        //displayMinutes.setCursor(0, 7 );   
+        if ( nowTm->tm_min <10 ) displayMinutes.print('0');
+        displayMinutes.print( nowTm->tm_min );
+
+        // секунды
+        // displayMinutes.setFont(fontS);
+        // displayMinutes.setTextSize(sizeS);
+
+
+        // auto fGlyphs = fontS->glyph;
+        
+        // auto fHeight  = ( fGlyphs != nullptr ) ? fGlyphs->height : 0;
+        auto fHeight = getFontHeight( displayMinutes, fontS, sizeS);
+
+        const int16_t posY = sizeS * ((fontS == nullptr) ? 0:  fHeight ) ;
+        //const int16_t posY = 0;
+
+        //Serial.printf("Y pos = %d\n", posY);
+
+
+        displayMinutes.setCursor( displayMinutes.getCursorX(), posY);
+        if ( nowTm->tm_sec <10 ) displayMinutes.print('0');
+        displayMinutes.print( nowTm->tm_sec);
+        displayMinutes.display();
+    }
+    }
+}
   
 };

@@ -11,6 +11,10 @@
 #include "wm_params.h"
 #include <MultiResetDetector.h>
 #include "ota_utils.h"
+#include "AsyncHttpsClient.h"
+#include "request_utils.h"
+// #include "geo_async.h"
+// #include "weather_async.h"
 
 // лучше всё это определить в setup
 WiFiManager wm;
@@ -21,7 +25,7 @@ WiFiManagerParameter geolocationApiKeyParam;
 SliderControl *contrD1;
 SliderControl *contrD2;
 
-//#define POINT_STOP_WIFI
+#define POINT_STOP_WIFI
 
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...)                               \
@@ -34,6 +38,20 @@ SliderControl *contrD2;
 #define pointStop(ms, fmt, ...)
 #endif
 
+
+#define each(ms, func)                       \
+  {                                          \
+    static unsigned long startMs = millis(); \
+    if (millis() - startMs >= (ms))          \
+    {                                        \
+      startMs = millis();                    \
+      {                                      \
+        func;                                \
+      }                                      \
+    }                                        \
+  }
+
+  
 extern const char timeZone[];
 extern WiFiManager wm;
 const unsigned long connectionTime = 10000UL;
@@ -43,11 +61,57 @@ MultiResetDetector tripleReset;
 
 // Глобальные переменные для хранения настроек
 extern EepromData eepromSets;
+extern AsyncHttpsClient httpsClient;
+
 
 namespace CaptivePortal
 {
   static const char name[] /* PROGMEM */ = "WEatherSTation";
  
+  bool validateOpenWeatherKey(const String& apiKey ){
+    if (apiKey.isEmpty() || apiKey.length() < 32) {
+      return false; // Базовая проверка длины ключа
+    }
+
+    // Используем существующий клиент из weather_async.h
+    if (httpsClient.isBusy()) {
+        return false; // Клиент уже занят
+    }
+
+    bool validationResult = false;
+    bool requestCompleted = false;
+
+    String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
+
+    httpsClient.get(testUrl, 
+            nullptr, // Обработчик заголовков не нужен
+            nullptr, // Обработчик чанков не нужен
+            [&validationResult, &requestCompleted]() {
+                // Коллбек успешного завершения
+                if (httpsClient.getStatusCode() == 200) {
+                    String payload = httpsClient.getBody();
+                    JsonDocument doc;
+                    if (deserializeJson(doc, payload)) {
+                        validationResult = doc["weather"].is<JsonArray>();
+                    }
+                }
+                requestCompleted = true;
+            },
+            [&requestCompleted](const String& error) {
+                // Коллбек ошибки
+                requestCompleted = true;
+            }
+        );
+
+    unsigned long start = millis();
+    while (!requestCompleted && (millis() - start < 5000)) {
+        httpsClient.update();
+        delay(10);
+    }
+
+    httpsClient.reset(); // Очищаем состояние клиента
+    return validationResult;
+  }
 
   void saveParamsCallback()
   {
@@ -140,20 +204,35 @@ namespace CaptivePortal
     
     wm.setConfigPortalTimeout(180);
   };
-};
 
+  void processPortal(Adafruit_PCD8544* display) {
+    ArduinoOTA.setHostname(CaptivePortal::name);
+    OTA::setup();
+  
+    while (true) {
+      delay(0);
+        if (!wm.getConfigPortalActive()) {
+            if (tripleReset.isTriggered()) {
+                tripleReset.clearTrigger();
+            }
+            wm.startConfigPortal(CaptivePortal::name);
+        }
+  
+        wm.process();
+        OTA::handle();
+        
+        // Проверяем условия выхода
+        if (WiFi.status() == WL_CONNECTED && 
+            isSettingsValid && 
+            validateOpenWeatherKey(openWeatherApiKeyParam.getValue())) {
+            break;
+        }
+        
+        each(500, printDots(display, WiFi_Icon::_bmp, 2));
+    }
+  };
+}; //namespace CaptivePortal
 
-#define each(ms, func)                       \
-  {                                          \
-    static unsigned long startMs = millis(); \
-    if (millis() - startMs >= (ms))          \
-    {                                        \
-      startMs = millis();                    \
-      {                                      \
-        func;                                \
-      }                                      \
-    }                                        \
-  }
 
 bool wifiInSleepMode = false;
 
@@ -173,6 +252,8 @@ namespace Reconnect
   };
   // Параметры соединения (хранятся только в оперативной памяти)
   static Data saved;
+
+  bool isSaved(){ return saved._localIP.isSet(); };
 
   size_t bssidPrintTo(Print &p)
   {
@@ -200,7 +281,7 @@ namespace Reconnect
     out += p.println(saved._subnet);
     return out;
   };
-  static bool needResave = false;
+  //static bool needResave = false;
   void save(const String &name = "", const String &psk = "" /*const uint8_t ch, const uint8_t* bssid,
      const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/
   )
@@ -242,7 +323,32 @@ namespace Reconnect
 
 }; // namespace Reconnect
 
-void connectToWiFi(Adafruit_PCD8544 *display = nullptr)
+
+
+void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
+  printDots(display, WiFi_Icon::_bmp, 2);
+  
+  // Попытка быстрого подключения к сохраненной сети
+  if (!WiFi.isConnected() && Reconnect::isSaved() ) {
+      Reconnect::connect();      
+      while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
+          delay(10);
+          each(500, printDots(display, WiFi_Icon::_bmp, 2));
+      }
+  }
+
+  // Если быстрое подключение не удалось или нужна настройка
+  if (! wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
+      CaptivePortal::processPortal(display);
+  }
+
+  // Сохраняем параметры подключения
+  if (WiFi.isConnected()) {
+      Reconnect::save(WiFi.SSID(), WiFi.psk());
+  }
+}
+
+void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
 {
 
   printDots(display, WiFi_Icon::_bmp, 2);

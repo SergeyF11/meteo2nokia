@@ -115,7 +115,7 @@ namespace Weather {
     static time_t updatedTime = 0;
     
 
-    String getLang(GeoLocationAsync::GeoData& location);
+    String getLang( const GeoLocationAsync::GeoData& location);
 
     inline int hPa2MmHg(const float pressure) {
         return int(pressure * 0.750062);
@@ -165,7 +165,7 @@ namespace Weather {
         }
     };
 
-    String getLang(GeoLocationAsync::GeoData& location) {
+    String getLang(const GeoLocationAsync::GeoData& location) {
         String code;
         if ( location.country[0] != '\0' ) {
             code = String(location.country);
@@ -180,48 +180,85 @@ namespace Weather {
     };
 
 
-    AsyncRequest::Error updateData() {
-        if(!WiFi.isConnected()) return AsyncRequest::NoConnection;
-
+    AsyncRequest::Error getData(const String& key, const GeoLocationAsync::GeoData& location, 
+        AsyncHttpsClient::CompleteCallback onComplete, AsyncHttpsClient::ErrorCallback onError ){
         String requestUri("https://api.openweathermap.org/data/2.5/weather?");
 
-        if (GeoLocationAsync::myLocation.valid()) {
+        if (location.valid()) {
             requestUri += "lat=";
-            requestUri += String(GeoLocationAsync::myLocation.latitude, 5);
+            requestUri += String(location.latitude, 5);
             requestUri += "&lon=";
-            requestUri += String(GeoLocationAsync::myLocation.longitude, 5);
-            requestUri += getLang(GeoLocationAsync::myLocation);
+            requestUri += String(location.longitude, 5);
+            requestUri += getLang(location);
         } else {
             requestUri += "q=";
-            requestUri += GeoLocationAsync::myLocation.city;
+            requestUri += location.city;
             requestUri += ',';
-            requestUri += GeoLocationAsync::myLocation.country;
+            requestUri += location.country;
         }
         requestUri += "&units=metric&appid=";
-        requestUri += eepromSets.getWeatherKey();
+        requestUri += key;
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
 
-        if (!httpsClient.isBusy()) {
-            httpsClient.get(requestUri, 
-                // [](int statusCode, const String& headers) {
-                //     // Обработка заголовков (если нужно)
-                // },
-                // [](const String& chunk) {
-                //     // Обработка данных по мере поступления (если нужно)
-                // },
+        if (httpsClient.isBusy()) return AsyncRequest::SendedAlready;
+        
+        httpsClient.get(requestUri, 
                 nullptr, nullptr,
-                onRequestComplete,
-                [&](const String& error) {
-                    pointStop(0,"Request error: %s\n", error.c_str());
-                    updateState = AsyncRequest::FailRespond;
-                    httpsClient.reset();
-                }
-            );
-            updateState = AsyncRequest::RespondWaiting;
-            return AsyncRequest::OK;
-        }
-        return AsyncRequest::SendedAlready;
+                onComplete, onError);
+        updateState = AsyncRequest::RespondWaiting;
+        return AsyncRequest::OK;            
+    };
+
+    AsyncRequest::Error updateData() {
+        if(!WiFi.isConnected()) return AsyncRequest::NoConnection;
+        auto onError = [&](const String& error) {
+            pointStop(0,"Request error: %s\n", error.c_str());
+            updateState = AsyncRequest::FailRespond;
+            httpsClient.reset();
+        };
+
+        return getData(eepromSets.getWeatherKey(), GeoLocationAsync::myLocation, 
+            onRequestComplete, onError);
     }
+    //     String requestUri("https://api.openweathermap.org/data/2.5/weather?");
+
+    //     if (GeoLocationAsync::myLocation.valid()) {
+    //         requestUri += "lat=";
+    //         requestUri += String(GeoLocationAsync::myLocation.latitude, 5);
+    //         requestUri += "&lon=";
+    //         requestUri += String(GeoLocationAsync::myLocation.longitude, 5);
+    //         requestUri += getLang(GeoLocationAsync::myLocation);
+    //     } else {
+    //         requestUri += "q=";
+    //         requestUri += GeoLocationAsync::myLocation.city;
+    //         requestUri += ',';
+    //         requestUri += GeoLocationAsync::myLocation.country;
+    //     }
+    //     requestUri += "&units=metric&appid=";
+    //     requestUri += eepromSets.getWeatherKey();
+    //     pointStop(0,"Request:\n%s\n", requestUri.c_str());
+
+    //     if (!httpsClient.isBusy()) {
+    //         httpsClient.get(requestUri, 
+    //             // [](int statusCode, const String& headers) {
+    //             //     // Обработка заголовков (если нужно)
+    //             // },
+    //             // [](const String& chunk) {
+    //             //     // Обработка данных по мере поступления (если нужно)
+    //             // },
+    //             nullptr, nullptr,
+    //             onRequestComplete,
+    //             [&](const String& error) {
+    //                 pointStop(0,"Request error: %s\n", error.c_str());
+    //                 updateState = AsyncRequest::FailRespond;
+    //                 httpsClient.reset();
+    //             }
+    //         );
+    //         updateState = AsyncRequest::RespondWaiting;
+    //         return AsyncRequest::OK;
+    //     }
+    //     return AsyncRequest::SendedAlready;
+    // }
 
     void drawIcon(Adafruit_PCD8544& display, const uint8_t* bitmap, const uint8_t width = 32, const uint8_t height = 32) {
         display.clearDisplay();

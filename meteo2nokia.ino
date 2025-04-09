@@ -28,7 +28,7 @@ tm* nowTm;
 #include "utils/sensor_utils.h"
 #include "utils/display_utils.h"
 #include "utils/time_utils.h"
-#include "utils/tz_utils.h"
+//#include "utils/tz_utils.h"
 
 
 AsyncHttpsClient httpsClient;
@@ -166,7 +166,11 @@ void setup() {
     } 
   }
 
-  displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2());
+  while(1){
+    TimeUtils::printTo(display1, display2, &FreeMonoBold24pt7b, 1, &FreeMonoBold12pt7b );
+    delay(1000);
+  }
+
   weatherTick.reset( -weatherUpdateInterval );
   httpsClient.setTimeout(3000);
 }
