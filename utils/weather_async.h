@@ -115,7 +115,7 @@ namespace Weather {
     static time_t updatedTime = 0;
     
 
-    String getLang( const GeoLocationAsync::GeoData& location);
+    String getLang(GeoLocationAsync::GeoData& location);
 
     inline int hPa2MmHg(const float pressure) {
         return int(pressure * 0.750062);
@@ -165,7 +165,7 @@ namespace Weather {
         }
     };
 
-    String getLang(const GeoLocationAsync::GeoData& location) {
+    String getLang(GeoLocationAsync::GeoData& location) {
         String code;
         if ( location.country[0] != '\0' ) {
             code = String(location.country);
@@ -180,85 +180,48 @@ namespace Weather {
     };
 
 
-    AsyncRequest::Error getData(const String& key, const GeoLocationAsync::GeoData& location, 
-        AsyncHttpsClient::CompleteCallback onComplete, AsyncHttpsClient::ErrorCallback onError ){
-        String requestUri("https://api.openweathermap.org/data/2.5/weather?");
-
-        if (location.valid()) {
-            requestUri += "lat=";
-            requestUri += String(location.latitude, 5);
-            requestUri += "&lon=";
-            requestUri += String(location.longitude, 5);
-            requestUri += getLang(location);
-        } else {
-            requestUri += "q=";
-            requestUri += location.city;
-            requestUri += ',';
-            requestUri += location.country;
-        }
-        requestUri += "&units=metric&appid=";
-        requestUri += key;
-        pointStop(0,"Request:\n%s\n", requestUri.c_str());
-
-        if (httpsClient.isBusy()) return AsyncRequest::SendedAlready;
-        
-        httpsClient.get(requestUri, 
-                nullptr, nullptr,
-                onComplete, onError);
-        updateState = AsyncRequest::RespondWaiting;
-        return AsyncRequest::OK;            
-    };
-
     AsyncRequest::Error updateData() {
         if(!WiFi.isConnected()) return AsyncRequest::NoConnection;
-        auto onError = [&](const String& error) {
-            pointStop(0,"Request error: %s\n", error.c_str());
-            updateState = AsyncRequest::FailRespond;
-            httpsClient.reset();
-        };
 
-        return getData(eepromSets.getWeatherKey(), GeoLocationAsync::myLocation, 
-            onRequestComplete, onError);
+        String requestUri(OpenWeaterRequest::uri);
+
+        if (GeoLocationAsync::myLocation.valid()) {
+            requestUri += "lat=";
+            requestUri += String(GeoLocationAsync::myLocation.latitude, 5);
+            requestUri += "&lon=";
+            requestUri += String(GeoLocationAsync::myLocation.longitude, 5);
+            requestUri += getLang(GeoLocationAsync::myLocation);
+        } else {
+            requestUri += "q=";
+            requestUri += GeoLocationAsync::myLocation.city;
+            requestUri += ',';
+            requestUri += GeoLocationAsync::myLocation.country;
+        }
+        requestUri += "&units=metric&appid=";
+        requestUri += eepromSets.getWeatherKey();
+        pointStop(0,"Request:\n%s\n", requestUri.c_str());
+
+        if (!httpsClient.isBusy()) {
+            httpsClient.get(requestUri, 
+                // [](int statusCode, const String& headers) {
+                //     // Обработка заголовков (если нужно)
+                // },
+                // [](const String& chunk) {
+                //     // Обработка данных по мере поступления (если нужно)
+                // },
+                nullptr, nullptr,
+                onRequestComplete,
+                [&](const String& error) {
+                    pointStop(0,"Request error: %s\n", error.c_str());
+                    updateState = AsyncRequest::FailRespond;
+                    httpsClient.reset();
+                }
+            );
+            updateState = AsyncRequest::RespondWaiting;
+            return AsyncRequest::OK;
+        }
+        return AsyncRequest::SendedAlready;
     }
-    //     String requestUri("https://api.openweathermap.org/data/2.5/weather?");
-
-    //     if (GeoLocationAsync::myLocation.valid()) {
-    //         requestUri += "lat=";
-    //         requestUri += String(GeoLocationAsync::myLocation.latitude, 5);
-    //         requestUri += "&lon=";
-    //         requestUri += String(GeoLocationAsync::myLocation.longitude, 5);
-    //         requestUri += getLang(GeoLocationAsync::myLocation);
-    //     } else {
-    //         requestUri += "q=";
-    //         requestUri += GeoLocationAsync::myLocation.city;
-    //         requestUri += ',';
-    //         requestUri += GeoLocationAsync::myLocation.country;
-    //     }
-    //     requestUri += "&units=metric&appid=";
-    //     requestUri += eepromSets.getWeatherKey();
-    //     pointStop(0,"Request:\n%s\n", requestUri.c_str());
-
-    //     if (!httpsClient.isBusy()) {
-    //         httpsClient.get(requestUri, 
-    //             // [](int statusCode, const String& headers) {
-    //             //     // Обработка заголовков (если нужно)
-    //             // },
-    //             // [](const String& chunk) {
-    //             //     // Обработка данных по мере поступления (если нужно)
-    //             // },
-    //             nullptr, nullptr,
-    //             onRequestComplete,
-    //             [&](const String& error) {
-    //                 pointStop(0,"Request error: %s\n", error.c_str());
-    //                 updateState = AsyncRequest::FailRespond;
-    //                 httpsClient.reset();
-    //             }
-    //         );
-    //         updateState = AsyncRequest::RespondWaiting;
-    //         return AsyncRequest::OK;
-    //     }
-    //     return AsyncRequest::SendedAlready;
-    // }
 
     void drawIcon(Adafruit_PCD8544& display, const uint8_t* bitmap, const uint8_t width = 32, const uint8_t height = 32) {
         display.clearDisplay();
@@ -425,7 +388,119 @@ namespace Weather {
                 }
             }
             httpsClient.update();
-        }
+        }void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
+        // {
+        
+        //   printDots(display, WiFi_Icon::_bmp, 2);
+        //   if (!WiFi.isConnected() && Reconnect::isValid() )
+        //   {
+        //     Reconnect::connect();
+        //     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
+        //     {
+        //       delay(10);
+        //       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+        //     }
+        //   }
+        
+        //   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
+        //   { //}, "atheration")){
+        //     Serial.println("connected...");
+        //   } else  {
+        //     // needExitConfigPortal = false;
+        //     Serial.println("Config portal running");
+            
+        //     ArduinoOTA.setHostname( CaptivePortal::name );
+        //     OTA::setup();
+        
+        
+        //     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
+        //     {
+        //       if (!wm.getConfigPortalActive())
+        //       {
+        //         if (tripleReset.isTriggered())
+        //         {
+        //           static bool resetTriple = false;
+                  
+        //           if (resetTriple)
+        //             tripleReset.clearTrigger();
+        //           else
+        //             resetTriple = tripleReset.isTriggered();
+        //         }
+        //         Serial.println("Restart portal on demavoid connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
+// {
+
+//   printDots(display, WiFi_Icon::_bmp, 2);
+//   if (!WiFi.isConnected() && Reconnect::isValid() )
+//   {
+//     Reconnect::connect();
+//     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
+//     {
+//       delay(10);
+//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+//     }
+//   }
+
+//   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
+//   { //}, "atheration")){
+//     Serial.println("connected...");
+//   } else  {
+//     // needExitConfigPortal = false;
+//     Serial.println("Config portal running");
+    
+//     ArduinoOTA.setHostname( CaptivePortal::name );
+//     OTA::setup();
+
+
+//     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
+//     {
+//       if (!wm.getConfigPortalActive())
+//       {
+//         if (tripleReset.isTriggered())
+//         {
+//           static bool resetTriple = false;
+          
+//           if (resetTriple)
+//             tripleReset.clearTrigger();
+//           else
+//             resetTriple = tripleReset.isTriggered();
+//         }
+//         Serial.println("Restart portal on demand");
+//         wm.startConfigPortal(CaptivePortal::name);
+//       }
+
+//       if (wm.process())
+//       {
+//         pointStop(0, "Status changed\n");
+//       }
+//       OTA::handle();
+//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+//     }
+
+//     pointStop(0, "Key is %s and WiFi is %s\n",
+//       isSettingsValid ? "valid" : "invalid",
+//               WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
+//   }
+//   if (WiFi.isConnected())
+//     Reconnect::save(WiFi.SSID(), WiFi.psk());
+// }nd");
+        //         wm.startConfigPortal(CaptivePortal::name);
+        //       }
+        
+        //       if (wm.process())
+        //       {
+        //         pointStop(0, "Status changed\n");
+        //       }
+        //       OTA::handle();
+        //       each(500, printDots(display, WiFi_Icon::_bmp, 2));
+        //     }
+        
+        //     pointStop(0, "Key is %s and WiFi is %s\n",
+        //       isSettingsValid ? "valid" : "invalid",
+        //               WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
+        //   }
+        //   if (WiFi.isConnected())
+        //     Reconnect::save(WiFi.SSID(), WiFi.psk());
+        // }
     }
 
     void handleDisplayUpdate(Adafruit_PCD8544& display) {

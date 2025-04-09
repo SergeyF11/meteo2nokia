@@ -24,3 +24,7 @@ enum State {
 };
 
 };
+
+namespace OpenWeaterRequest {
+    const char uri[] PROGMEM = "https://api.openweathermap.org/data/2.5/weather?";
+};
