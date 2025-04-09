@@ -11,6 +11,7 @@
 #include "wm_params.h"
 #include <MultiResetDetector.h>
 #include "ota_utils.h"
+#include "request_utils.h"
 
 // лучше всё это определить в setup
 WiFiManager wm;
@@ -79,7 +80,9 @@ namespace CaptivePortal
     httpsClient.setInsecureMode();
     httpsClient.setTimeout(3000);
     // Создаем тестовый запрос (аналогично weather_async.h)
-    String testUrl = "https://api.openweathermap.org/data/2.5/weather?q=London&units=metric&appid=" + apiKey;
+    String testUrl(OpenWeaterRequest::uri);
+    testUrl += "q=London&appid=";
+    testUrl += apiKey;
     
     bool validationResult = false;
     bool requestCompleted = false;
@@ -91,6 +94,7 @@ namespace CaptivePortal
         [&]() {
             // Коллбек успешного завершения
             if (httpsClient.getStatusCode() == 200) {
+
                 String payload = httpsClient.getBody();
                 Serial.println( payload);
                 
@@ -101,7 +105,7 @@ namespace CaptivePortal
                   validationResult = doc["weather"].is<JsonArray>(); 
 
                 } else {
-                  pointStop(0, "%s\n", err.c_str() );
+                  pointStop(0, "deserialize error: %s\n", err.c_str() );
                 }
             } else {
               pointStop(0,"Error request: %d\n", httpsClient.getStatusCode());
