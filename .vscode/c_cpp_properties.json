@@ -62,7 +62,7 @@
                 "MMU_ICACHE_SIZE=0x8000",
                 "FP_IN_IROM",
                 "NONOSDK22x_191122=1",
-                "F_CPU=80000000L",
+                "F_CPU=160000000L",
                 "LWIP_OPEN_SRC",
                 "TCP_MSS=536",
                 "LWIP_FEATURES=1",

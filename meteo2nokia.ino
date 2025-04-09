@@ -166,10 +166,10 @@ void setup() {
     } 
   }
 
-  while(1){
-    TimeUtils::printTo(display1, display2, &FreeMonoBold24pt7b, 1, &FreeMonoBold12pt7b );
-    delay(1000);
-  }
+  // while(1){
+  //   TimeUtils::printTo(display1, display2, &FreeMonoBold24pt7b, 1, &FreeMonoBold12pt7b );
+  //   delay(1000);
+  // }
 
   weatherTick.reset( -weatherUpdateInterval );
   httpsClient.setTimeout(3000);
