@@ -39,7 +39,7 @@ WiFiManagerParameter geolocationApiKeyParam;
 SliderControl *contrD1;
 SliderControl *contrD2;
 
-#define POINT_STOP_WIFI
+//#define POINT_STOP_WIFI
 
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...)                               \
@@ -91,15 +91,12 @@ namespace CaptivePortal
         return false; // Базовая проверка длины ключа
     }
 
-    // Используем существующий клиент из weather_async.h
-  
-    
+    // Используем существующий клиент 
     if (httpsClient.isBusy()) {
       pointStop(0, "Https client busy\n");
         return false; // Клиент уже занят
     }
-    httpsClient.setInsecureMode();
-    httpsClient.setTimeout(3000);
+
     // Создаем тестовый запрос (аналогично weather_async.h)
     String testUrl(OpenWeaterRequest::uri);
     testUrl += "q=London&appid=";
@@ -281,6 +278,23 @@ bool wifiInSleepMode = false;
 // hasValidApiKey
 namespace Reconnect
 {
+  class Led {
+    const uint8_t _pin;
+    const bool _onLevel;
+
+    public:
+    Led(const uint8_t pin=BUILTIN_LED, bool onLevel=LOW ):
+      _pin(pin), _onLevel(onLevel) {
+      pinMode(_pin, OUTPUT);
+      off();
+    };
+    void on() const { digitalWrite(_pin, _onLevel); };
+    void off() const {digitalWrite(_pin, !_onLevel); };
+    bool isOn() const { return digitalRead(_pin) == _onLevel; };
+    void toggle() const { digitalWrite(_pin, !digitalRead(_pin)); };
+  };
+  static Led led;
+
   struct Data
   {
     char name[64] = {0};
@@ -352,6 +366,7 @@ namespace Reconnect
 
     if ( !WiFi.forceSleepWake() || !WiFi.mode(WIFI_STA))
       return false;
+    Reconnect::led.on();
     wifiInSleepMode = false;
 
     if (_timeout != 0 )
@@ -370,7 +385,7 @@ namespace Reconnect
 
 void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
   printDots(display, WiFi_Icon::_bmp, 2);
-  
+  Reconnect::led.on();
   // Попытка быстрого подключения к сохраненной сети
   if (!WiFi.isConnected() && Reconnect::isSaved() ) {
       Reconnect::connect();      
@@ -391,91 +406,6 @@ void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
   }
 }
 
-// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
-// {
-
-// void connectToWiFi(Adafruit_PCD8544* display = nullptr) {
-//   printDots(display, WiFi_Icon::_bmp, 2);
-  
-//   // Попытка быстрого подключения к сохраненной сети
-//   if (!WiFi.isConnected()&& Reconnect::isValid() )
-//   {
-//     Reconnect::connect();
-//     while (!WiFi.isConnected() && !Reconnect::waitTimeout()) {
-//           delay(10);
-//           each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//       }
-//   }
-
-//   // Если быстрое подключение не удалось или нужна настройка
-//   if (!wm.autoConnect(CaptivePortal::name) || !isSettingsValid || tripleReset.isTriggered()) {
-//       CaptivePortal::processPortal(display);
-//   }
-
-//   // Сохраняем параметры подключения
-//   if (WiFi.isConnected()) {
-//       Reconnect::save(WiFi.SSID(), WiFi.psk());
-//   }
-// }
-
-// void connectToWiFiOld(Adafruit_PCD8544 *display = nullptr)
-// {
-
-//   printDots(display, WiFi_Icon::_bmp, 2);
-//   if (!WiFi.isConnected() && Reconnect::isValid() )
-//   {
-//     Reconnect::connect();
-//     while (!WiFi.isConnected() && !Reconnect::waitTimeout())
-//     {
-//       delay(10);
-//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//     }
-//   }
-
-//   if (wm.autoConnect(CaptivePortal::name) && isSettingsValid && !tripleReset.isTriggered())
-//   { //}, "atheration")){
-//     Serial.println("connected...");
-//   } else  {
-//     // needExitConfigPortal = false;
-//     Serial.println("Config portal running");
-    
-//     ArduinoOTA.setHostname( CaptivePortal::name );
-//     OTA::setup();
-
-
-//     while (!isSettingsValid || WiFi.status() != WL_CONNECTED || tripleReset.isTriggered())
-//     {
-//       if (!wm.getConfigPortalActive())
-//       {
-//         if (tripleReset.isTriggered())
-//         {
-//           static bool resetTriple = false;
-          
-//           if (resetTriple)
-//             tripleReset.clearTrigger();
-//           else
-//             resetTriple = tripleReset.isTriggered();
-//         }
-//         Serial.println("Restart portal on demand");
-//         wm.startConfigPortal(CaptivePortal::name);
-//       }
-
-//       if (wm.process())
-//       {
-//         pointStop(0, "Status changed\n");
-//       }
-//       OTA::handle();
-//       each(500, printDots(display, WiFi_Icon::_bmp, 2));
-//     }
-
-//     pointStop(0, "Key is %s and WiFi is %s\n",
-//       isSettingsValid ? "valid" : "invalid",
-//               WiFi.status() == WL_CONNECTED ? "connected" : "not connect");
-//   }
-//   if (WiFi.isConnected())
-//     Reconnect::save(WiFi.SSID(), WiFi.psk());
-// }
-
 
 extern const unsigned long weatherUpdateInterval;
 bool wiFiSleep(){
@@ -483,7 +413,9 @@ bool wiFiSleep(){
   if( wifiInSleepMode ) pointStop(0, "WiFi disconnected\n");
   
   wifiInSleepMode &= WiFi.forceSleepBegin(1000UL * weatherUpdateInterval);  // Отключить Wi-Fi
-  if( wifiInSleepMode ) Serial.println("WiFi sleeped" ); //(0, "WiFi Sleeped\n");
-
+  if( wifiInSleepMode ) {
+    Serial.println("WiFi sleeped" ); //(0, "WiFi Sleeped\n");
+    Reconnect::led.off();
+  }
   return wifiInSleepMode;
 }
