@@ -197,7 +197,7 @@ namespace Weather {
             requestUri += ',';
             requestUri += GeoLocationAsync::myLocation.country;
         }
-        requestUri += getLang(myLocation);
+        
         requestUri += "&units=metric&appid=";
         requestUri += eepromSets.getWeatherKey();
         pointStop(0,"Request:\n%s\n", requestUri.c_str());
