@@ -39,7 +39,7 @@ WiFiManagerParameter geolocationApiKeyParam;
 SliderControl *contrD1;
 SliderControl *contrD2;
 
-//#define POINT_STOP_WIFI
+#define POINT_STOP_WIFI
 
 #ifdef POINT_STOP_WIFI
 #define pointStop(ms, fmt, ...)                               \

@@ -33,7 +33,7 @@ struct SimpleTicker {
 
 struct RefresherTicker : SimpleTicker {
   private:
-  unsigned long lastRefresh = 0;
+  unsigned long lastRefresh = -999999;
   const unsigned long refreshInterval;
 
   public:

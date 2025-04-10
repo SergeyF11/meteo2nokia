@@ -8,9 +8,9 @@
 #include "../icons/weather_icons.h"
 #include "request_utils.h"
 #include <partialHash32.h>
+#include "ticker.h"
 
 #define POINT_STOP_WEATHER
-
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else
@@ -22,7 +22,7 @@
 //extern GeoLocationAsync::GeoData myLocation;
 
 extern const unsigned long weatherUpdateInterval;
-#include "ticker.h"
+
 extern RefresherTicker weatherTick;
 extern AsyncHttpsClient httpsClient;
 
@@ -327,52 +327,59 @@ namespace Weather {
         display.display();
     };
 
-    void handleDataUpdate() {
-        if (weatherTick.tick()) {
-            if (updateState == AsyncRequest::Idle) {
-                if (WiFi.isConnected()) {
-                    if (updateData() == AsyncRequest::OK) {
-                        updateState = AsyncRequest::RespondWaiting;
-                    } else {
-                        updateState = AsyncRequest::FailRespond;
-                        weatherTick.reset(wrongUpdateInterval(10 SECONDS));
-                    }
-                } else {
-                    updateState = AsyncRequest::WaitWiFiConnection;
-                    Reconnect::connect(5000);
-                }
-            }
-            httpsClient.update();
-        }
-    }
+    // void handleDataUpdate() {
+    //     if (weatherTick.tick()) {
+    //         if (updateState == AsyncRequest::Idle) {
+    //             if (WiFi.isConnected()) {
+    //                 if (updateData() == AsyncRequest::OK) {
+    //                     updateState = AsyncRequest::RespondWaiting;
+    //                 } else {
+    //                     updateState = AsyncRequest::FailRespond;
+    //                     weatherTick.reset(wrongUpdateInterval(10 SECONDS));
+    //                 }
+    //             } else {
+    //                 updateState = AsyncRequest::WaitWiFiConnection;
+    //                 Reconnect::connect(5000);
+    //             }
+    //         }
+    //         httpsClient.update();
+    //     }
+    // }
 
-    void handleDisplayUpdate(Adafruit_PCD8544& display) {
-        switch (updateState) {
-            case AsyncRequest::WaitWiFiConnection:
-            case AsyncRequest::RespondWaiting:
-                update(display, true); // Show with WiFi indicator
-                break;
+    // void handleDisplayUpdate(Adafruit_PCD8544& display) {
+    //     switch (updateState) {
+    //         case AsyncRequest::WaitWiFiConnection:     
+    //         case AsyncRequest::RespondWaiting:
+    //             update(display, true); // Show with WiFi indicator
+    //             break;
                 
-            case AsyncRequest::SuccessRespond:
-                WiFi.disconnect(true, false);
-                update(display);
-                updateState = AsyncRequest::Idle;
-                break;
+    //         case AsyncRequest::SuccessRespond:
+    //             //WiFi.disconnect(true, false);
+    //             if ( wiFiSleep() ){
+    //                 update(display);
+    //             }   
+    //             updateState = AsyncRequest::Idle;
+    //             break;
                 
-            case AsyncRequest::FailRespond:
-                update(display);
-                weatherTick.reset(wrongUpdateInterval(5 MINUTES));
-                updateState = AsyncRequest::Idle;
-                break;
+    //         case AsyncRequest::FailRespond:
+    //             update(display);
+    //             weatherTick.reset(wrongUpdateInterval(5 MINUTES));
+    //             updateState = AsyncRequest::Idle;
+    //             break;
                 
-            default:
-                if (weatherTick.refresh()) {
-                    pointStop(0, "Refresh display\n");
-                    update(display);
-                }
-                break;
-        }
-    }
+    //         default:
+    //             if (weatherTick.refresh()) {
+    //                 pointStop(0, "Refresh display\n");
+    //                 if( wifiInSleepMode )   
+    //                         update(display);
+    //                     else
+    //                         update(display, true);
+    //                 }
+    //             //update(display);
+    //             // }
+    //             // break;
+    //     }
+    // }
     
     void updateDataDS(Adafruit_PCD8544& display) {
         
@@ -381,52 +388,6 @@ namespace Weather {
                 if ( ! wifiInSleepMode ){
                     wiFiSleep();
                 }
-                break;
-            // if ( weatherTick.refresh() ) update.display();
-            //     // Просто отображаем текущие данные
-            //     //update(display);
-            //     break;
-                
-            case AsyncRequest::WaitWiFiConnection:
-                update(display, true); // С иконкой WiFi
-                if (WiFi.isConnected()) {
-                    if (updateData() == AsyncRequest::OK) {
-                        updateState = AsyncRequest::RespondWaiting;
-                    } else {
-                        updateState = AsyncRequest::FailRespond;
-                    }
-                } else if (Reconnect::waitTimeout()) {
-                    
-                    weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
-                    updateState = AsyncRequest::Idle;
-                }
-                break;
-                
-            case AsyncRequest::RespondWaiting:
-                update(display, true); // С иконкой WiFi
-                break;
-                
-            case AsyncRequest::SuccessRespond:
-                //WiFi.disconnect(true, false);
-                if ( wiFiSleep()) {
-                    pointStop(0,"Wifi off\n");
-                    update(display);
-                }
-                updateState = AsyncRequest::Idle;
-                break;
-                
-            case AsyncRequest::FailRespond:
-                update(display, false);
-                weatherTick.reset( wrongUpdateInterval( 5 MINUTES ) );
-                updateState = AsyncRequest::Idle;
-//                 if (weatherTick.tick()) {
-// //////           надо проверять
-//                     updateState = AsyncRequest::Idle;
-//                     weatherTick.reset(-weatherUpdateInterval);
-
-//                 }
-                break;
-            default:
                 if ( weatherTick.refresh() ) {
                     pointStop(0, "Refresh display\n"); 
                     if( wifiInSleepMode )   
@@ -434,6 +395,51 @@ namespace Weather {
                     else
                         update(display, true);
                 }
+                break;
+                
+            case AsyncRequest::WaitWiFiConnection:
+                //update(display, true); // С иконкой WiFi
+                if (WiFi.isConnected()) {
+                    if (updateData() == AsyncRequest::OK) {
+                        updateState = AsyncRequest::RespondWaiting;
+                    } else {
+                        updateState = AsyncRequest::FailRespond;
+                    }
+                } else if (Reconnect::waitTimeout()) {
+                    pointStop(0, "Timeout reconnect. Try in 60 sec\n");
+                    weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
+                    wiFiSleep();
+                    updateState = AsyncRequest::Idle;
+                }
+                break;
+                
+            case AsyncRequest::RespondWaiting:
+                //update(display, true); // С иконкой WiFi
+                break;
+                
+            case AsyncRequest::SuccessRespond:
+                //WiFi.disconnect(true, false);
+                //wiFiSleep();
+                updateState = AsyncRequest::Idle;
+                break;
+                
+            case AsyncRequest::FailRespond:
+                //update(display, false);
+                //wiFiSleep();
+                pointStop(0, "Fail respond. Try in 5 min\n");
+                weatherTick.reset( wrongUpdateInterval( 5 MINUTES ) );
+                updateState = AsyncRequest::Idle;
+
+                break;
+            //default:
+                //break;
+                // if ( weatherTick.refresh() ) {
+                //     pointStop(0, "Refresh display\n"); 
+                //     if( wifiInSleepMode )   
+                //         update(display);
+                //     else
+                //         update(display, true);
+                // }
                     // Просто обновляем отображение текущих данных
                  
         }
