@@ -376,7 +376,11 @@ namespace Weather {
     void updateDataDS(Adafruit_PCD8544& display) {
         
         switch (updateState) {
-            // case AsyncRequest::Idle:
+             case AsyncRequest::Idle:
+                if ( ! wifiInSleepMode ){
+                    wiFiSleep();
+                }
+                break;
             // if ( weatherTick.refresh() ) update.display();
             //     // Просто отображаем текущие данные
             //     //update(display);
@@ -393,7 +397,7 @@ namespace Weather {
                 } else if (Reconnect::waitTimeout()) {
                     
                     weatherTick.reset( wrongUpdateInterval( 60 SECONDS ) );
-                    updateState = AsyncRequest::FailRespond;
+                    updateState = AsyncRequest::Idle;
                 }
                 break;
                 
@@ -423,8 +427,11 @@ namespace Weather {
                 break;
             default:
                 if ( weatherTick.refresh() ) {
-                    pointStop(0, "Refresh display\n");   
-                    update(display);
+                    pointStop(0, "Refresh display\n"); 
+                    if( wifiInSleepMode )   
+                        update(display);
+                    else
+                        update(display, true);
                 }
                     // Просто обновляем отображение текущих данных
                  
