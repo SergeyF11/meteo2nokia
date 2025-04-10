@@ -9,7 +9,7 @@
 #include "request_utils.h"
 #include <partialHash32.h>
 
-//#define POINT_STOP_WEATHER
+#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
@@ -197,6 +197,7 @@ namespace Weather {
             requestUri += ',';
             requestUri += GeoLocationAsync::myLocation.country;
         }
+        requestUri += getLang(myLocation);
         requestUri += "&units=metric&appid=";
         requestUri += eepromSets.getWeatherKey();
         pointStop(0,"Request:\n%s\n", requestUri.c_str());

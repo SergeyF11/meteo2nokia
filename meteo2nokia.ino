@@ -35,7 +35,7 @@ AsyncHttpsClient httpsClient;
 // Глобальные переменные для хранения настроек в eeprom и в программе
 EepromData eepromSets;
 
-#define hourToMs(hs) (1000L * 60 * 60 * hs  )
+#define  hourToMs(hs)  (1000UL * 60 * 60 * hs  )
 // Период обновления данных о погоде (по умолчанию 3 часа)
 //unsigned long weatherUpdateInterval = hourToMs(1); // 1 час в миллисекундах
 constexpr unsigned long weatherUpdateInterval = 30 MINUTES; //hourToMs( 1/6 ); // = 10 минут для отладки
@@ -50,8 +50,6 @@ struct RefresherTicker weatherTick(weatherUpdateInterval);
 struct SimpleTicker htuSensorTick( 60 SECONDS );
 
 
-
-//HTU21D htu;
 
 // Создаем объекты для экранов Nokia 5110
 //auto builtinLed = LED_BUILTIN; 

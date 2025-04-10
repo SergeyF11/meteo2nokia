@@ -303,6 +303,13 @@ namespace displays
     }
 
     display2.clearDisplay();
+    // display2.setTextSize(1);
+    // display2.setFont(&FreeMonoBold6pt8b);
+    // display2.setCursor(10,20);
+    // display2.println("ПОгодная");
+    // display2.setCursor(10, display2.getCursorY());
+    // display2.print("СТанция");
+    
     display2.setTextSize(1);
 
 
