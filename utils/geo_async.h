@@ -26,7 +26,8 @@ namespace RequestGeoAsync {
         NoResponse,
         NoData,
         ErrorData,
-        Pending
+        Pending,
+        NewData
     };
 }
 
@@ -242,6 +243,32 @@ namespace GeoLocationAsync {
         return geoRequester.update();
     }
 
+    void handleTick(){
+        static bool wifiIsOn= false;
+
+        switch (geoRequester.update())
+        {
+        case RequestGeoAsync::OK:
+        case RequestGeoAsync::Pending:
+            break;
+        case RequestGeoAsync::NoConnection:
+            wifiIsOn = true;
+            Reconnect::connect();
+            break;        
+        // case RequestGeoAsync::Pending:
+            
+        //     break;
+        // case RequestGeoAsync::NoData:
+        // case RequestGeoAsync::NewData:
+
+        //    break;
+        default:
+            if ( wifiIsOn ){
+                if ( wiFiSleep() ) wifiIsOn = false;
+            }
+            break;
+        }
+    }
 
     RequestGeoAsync::Error waitLocationReceived(GeoData &data, Adafruit_PCD8544 * display = nullptr)
     {        

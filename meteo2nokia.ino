@@ -178,15 +178,7 @@ void loop() {
   // вариант DS
   Weather::handleTick();  
   Weather::updateDataDS(display1);
-  // if ( weatherTick.tick() ){
-  //   if ( Reconnect::connect() ) {
-  //     //Weather::waitConnection = true;
-  //     Weather::updateState = AsyncRequest::WaitWiFiConnection;
-  //   } else {
-  //     weatherTick.reset( Weather::wrongUpdateInterval( 5 SECONDS ) );
-  //   }
-  // }
-  //Weather::updateDataMy(display1);
+  GeoLocationAsync::handleTick();
   
 
   

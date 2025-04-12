@@ -19,7 +19,7 @@
             "includePath": [
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/include",
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/tools/sdk/lwip2/include",
-                "/tmp/arduino/sketches/3040F22DC802CD9D4BCBEA869D92A94A/core",
+                "/home/sergey/Arduino/meteo2nokia/build/core",
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/cores/esp8266",
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/variants/generic",
                 "/home/sergey/.arduino15/packages/esp8266/hardware/esp8266/3.1.2/libraries/Wire",
