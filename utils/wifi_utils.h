@@ -339,20 +339,21 @@ namespace Reconnect
     return out;
   };
   //static bool needResave = false;
-  void save(const String &name = "", const String &psk = "" /*const uint8_t ch, const uint8_t* bssid,
+  bool save(const String &name = "", const String &psk = "" , bool print = false/*const uint8_t ch, const uint8_t* bssid,
      const IPAddress& ip, const IPAddress& gw, const IPAddress& sub*/
   )
   {
-    if (!name.isEmpty())
-      strcpy(saved.name, name.c_str());
-    if (!psk.isEmpty())
-      strcpy(saved.psk, psk.c_str());
+    if (name.isEmpty() || name.length() >63 ||
+        psk.isEmpty() || psk.length() > 63 ) return false;
+    strcpy(saved.name, name.c_str());
+    strcpy(saved.psk, psk.c_str());
     saved._channel = WiFi.channel();
     memcpy(saved._bssid, WiFi.BSSID(), 6); // Сохраняем BSSID
     saved._localIP = WiFi.localIP();
     saved._gateway = WiFi.gatewayIP();
     saved._subnet = WiFi.subnetMask();
-    printTo(Serial);
+    if (print) printTo(Serial);
+    return true;
   };
 
   static unsigned long start;
