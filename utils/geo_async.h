@@ -5,7 +5,7 @@
 #include "time_utils.h"
 #include "wifi_utils.h"
 
-//#define POINT_STOP_GEO
+#define POINT_STOP_GEO
 #ifdef POINT_STOP_GEO
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else

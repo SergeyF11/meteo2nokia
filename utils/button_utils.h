@@ -38,11 +38,13 @@ DisplayStyles next(DisplayStyles& s){
     default:
         s = DisplayStyles( s + 1);
     } 
+
+    Serial.print("Display style="); Serial.println( s);
     return s;
 };
 
 namespace Button {
-    void lightToggle(){ lightning.toggle();  }
+    void lightToggle(){ lightning.toggle(); Serial.println("Toggle light");  }
     void nextStyle(){ next(displayStyle); }
 
     void init() {
