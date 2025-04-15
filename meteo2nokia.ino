@@ -153,7 +153,7 @@ void setup() {
       case RequestGeoAsync::OK:
         validLocation = true;
         display1.clearDisplay();
-        display1.display();
+        //display1.display();
         if ( aproximateLocationAsync ) display1.print('~');
         display1.print(GeoLocationAsync::myLocation.city);
         break;

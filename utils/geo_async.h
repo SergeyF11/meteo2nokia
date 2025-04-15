@@ -5,7 +5,7 @@
 #include "time_utils.h"
 #include "wifi_utils.h"
 
-#define POINT_STOP_GEO
+//#define POINT_STOP_GEO
 #ifdef POINT_STOP_GEO
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else
@@ -14,7 +14,7 @@
 
 extern AsyncHttpsClient httpsClient;
 
-#define TX_OFFSET_INVALID 99999
+#define TZ_OFFSET_INVALID 99999
 
 bool aproximateLocationAsync = true;
 const unsigned long GEO_RETRY_INTERVAL = 5 MINUTES;
@@ -42,13 +42,13 @@ namespace GeoLocationAsync {
         char city[CitySize] = {0};
         char timeZone[TZSize] = {0};
         char countryCode[CountryCodeSize] = {0};
-        int tzOffset = TX_OFFSET_INVALID;
+        int tzOffset = TZ_OFFSET_INVALID;
         float latitude;
         float longitude;
         time_t unixTime;
         
         bool valid() const { return city[0] != '\0'; }
-        bool validOffset() const { return tzOffset != TX_OFFSET_INVALID; }
+        bool validOffset() const { return tzOffset != TZ_OFFSET_INVALID; }
 
         size_t printTo(Print &p) const 
         {
@@ -83,16 +83,21 @@ namespace GeoLocationAsync {
                 strlcpy(targetData->countryCode, doc["country_code2"] | "", CountryCodeSize);
                 strlcpy(targetData->timeZone, doc["time_zone"]["name"] | "", TZSize);
                 
-                targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TX_OFFSET_INVALID;
+                targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TZ_OFFSET_INVALID;
                 targetData->latitude = doc["latitude"].as<float>(); // | 0.0;
                 targetData->longitude = doc["longitude"].as<float>(); // | 0.0;
                 
+                if( strlen( targetData->timeZone ) != 0 ) configTime(  targetData->timeZone, NTP_SERVERS );
+                else if ( targetData->tzOffset != TZ_OFFSET_INVALID ) configTime ( targetData->tzOffset *3600UL, 0, NTP_SERVERS);
+
+
                 float unixTime = doc["time_zone"]["current_time_unix"].as<float>(); // | 0.0;
-                if (!TimeUtils::isSynced() && unixTime != 0.0) {
-                    targetData->unixTime = static_cast<time_t>(unixTime);
+                if (!TimeUtils::isSynced() && unixTime != 0.0) {    
+                    pointStop(0, "Set time\n");               
+                    targetData->unixTime = unixTime;
                     TimeUtils::setGMTTime(targetData->unixTime);
                 }
-        
+
                 hasPreciseLocation = true;
                 aproximateLocationAsync = false;
                 requestInProgress = false;

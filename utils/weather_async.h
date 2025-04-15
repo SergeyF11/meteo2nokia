@@ -9,7 +9,7 @@
 #include "request_utils.h"
 #include <partialHash32.h>
 
-#define POINT_STOP_WEATHER
+//#define POINT_STOP_WEATHER
 
 #ifdef POINT_STOP_WEATHER
 #define pointStop(ms, fmt, ...)                                   \
