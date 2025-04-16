@@ -6,6 +6,7 @@
 
 // Размер ключа API (32 символа)
 #define API_KEY_SIZE 32U
+#define ERRPOM_BLOCK_SIZE 128
 // Размер контрольной суммы (CRC32)
 //#define CRC_SIZE 4U
 
@@ -27,6 +28,8 @@ private:
   bool validKey(const char *key) const { return strlen(key) == API_KEY_SIZE; };
 
 public:
+  constexpr size_t size = sizeof(EepromData);
+
   size_t printTo(Print &p)
   {
     size_t out = p.print("Weather key=");
@@ -142,7 +145,7 @@ public:
 
   bool load(const int eepromStart = 0)
   {
-    EEPROM.begin(512 + (sizeof(EepromData) / 512));
+    EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData) / ERRPOM_BLOCK_SIZE));
     //uto data = *this;
     uint8_t *byteArray = reinterpret_cast<uint8_t *>(this);
     for (size_t i = 0; i < sizeof(EepromData); i++)
@@ -156,7 +159,7 @@ public:
   bool save(const int eepromStart = 0) const
   {
     if (!valid()) return false;
-    EEPROM.begin(512 + (sizeof(EepromData) / 512));
+    EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData) / ERRPOM_BLOCK_SIZE));
     
     const uint8_t *byteArray = reinterpret_cast<const uint8_t *>(this);
     for (size_t i = 0; i < sizeof(EepromData); i++)
@@ -175,7 +178,7 @@ bool saveEepromData(const EepromData &eepromData, const int eepromStart = 0)
 {
   if (!eepromData.valid())
     return false;
-  EEPROM.begin(512 + (sizeof(EepromData) / 512));
+  EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData) / ERRPOM_BLOCK_SIZE));
   const uint8_t *byteArray = reinterpret_cast<const uint8_t *>(&eepromData);
   for (size_t i = 0; i < sizeof(EepromData); i++)
   {
@@ -213,7 +216,7 @@ bool saveContrastSettings(uint8_t c1, uint8_t c2, const int eepromStart = 0)
 //Функция для загрузки всех данных из EEPROM
 bool loadEepromData(EepromData &data, const int eepromStart)
 {
-  EEPROM.begin(512 + (sizeof(EepromData) / 512));
+  EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData) / ERRPOM_BLOCK_SIZE));
   uint8_t *byteArray = reinterpret_cast<uint8_t *>(&data);
   for (size_t i = 0; i < sizeof(EepromData); i++)
   {
@@ -335,7 +338,7 @@ bool loadEepromData(EepromData &data, const int eepromStart)
 // bool saveApiKeys(const EepromData& eepromKeys, const int eepromStart=0) {
 //  if ( ! eepromKeys.valid() ) return false;
 //   // Инициализация EEPROM
-//   EEPROM.begin(512 + (sizeof(EepromData)/512));
+//   EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData)/ERRPOM_BLOCK_SIZE));
 //   // Записываем ключ и контрольную сумму в EEPROM
 //     const uint8_t* byteArray = reinterpret_cast<const uint8_t*>(&eepromKeys);
 //     for (size_t i = 0; i < sizeof(EepromData); i++) {
@@ -358,7 +361,7 @@ bool loadEepromData(EepromData &data, const int eepromStart)
 // // Функция для извлечения ключа API из EEPROM
 // bool loadApiKeys(EepromData& keysData, const int eepromStart=0) {
 //   // Инициализация EEPROM
-//   EEPROM.begin(512 + (sizeof(EepromData)/512));
+//   EEPROM.begin(ERRPOM_BLOCK_SIZE + (sizeof(EepromData)/ERRPOM_BLOCK_SIZE));
 //   // Читаем ключ из EEPROM
 //   uint8_t* byteArray = reinterpret_cast<uint8_t*>(&keysData);
 //   for (size_t i = 0; i < sizeof(EepromData); i++) {
