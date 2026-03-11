@@ -6,8 +6,12 @@
 #include "wifi_icon.h"
 // #include "FontsRus/FreeMonoBold6.h"
 // #include "FontsRus/FreeMonoBold12.h"
-#include "FontsEn/FreeMonoBold24pt7b.h"  //MonoBoldOblique24pt7b.h"
-#include "FontsEn/FreeMonoBold12pt7b.h"
+// #include "FontsEn/FreeMonoBold24pt7b.h"  //MonoBoldOblique24pt7b.h"
+// #include "FontsEn/FreeMonoBold12pt7b.h"
+
+#include <Fonts/FreeMonoBold24pt7b.h>  //MonoBoldOblique24pt7b.h"
+#include <Fonts/FreeMonoBold12pt7b.h>
+
 // #include "FontsRus/"
 // #include "FontsRus/CrystalNormal14.h"
 #include "eeprom_utils.h"
@@ -133,7 +137,7 @@ void applyDisplayContrast(Adafruit_PCD8544 &display1, Adafruit_PCD8544 &display2
 {
   display1.setContrast(eepromSets.getContrast1());
   display2.setContrast(eepromSets.getContrast2());
-  Serial.printf("Applied contrast: Display1=%d, Display2=%d\n", eepromSets.getContrast1(), eepromSets.getContrast2());
+ // Serial.printf("Applied contrast: Display1=%d, Display2=%d\n", eepromSets.getContrast1(), eepromSets.getContrast2());
 }
 
 struct FontSize

@@ -5,7 +5,7 @@
 #include "time_utils.h"
 #include "wifi_utils.h"
 
-//#define POINT_STOP_GEO
+#define POINT_STOP_GEO
 #ifdef POINT_STOP_GEO
 #define pointStop(ms, fmt, ...) { Serial.printf( "[%d] %s ", __LINE__,  __PRETTY_FUNCTION__); Serial.printf(fmt, ## __VA_ARGS__); delay(ms); }
 #else
@@ -14,7 +14,7 @@
 
 extern AsyncHttpsClient httpsClient;
 
-#define TX_OFFSET_INVALID 99999
+#define TZ_OFFSET_INVALID 99999
 
 bool aproximateLocationAsync = true;
 const unsigned long GEO_RETRY_INTERVAL = 5 MINUTES;
@@ -26,7 +26,8 @@ namespace RequestGeoAsync {
         NoResponse,
         NoData,
         ErrorData,
-        Pending
+        Pending,
+        NewData
     };
 }
 
@@ -41,13 +42,13 @@ namespace GeoLocationAsync {
         char city[CitySize] = {0};
         char timeZone[TZSize] = {0};
         char countryCode[CountryCodeSize] = {0};
-        int tzOffset = TX_OFFSET_INVALID;
+        int tzOffset = TZ_OFFSET_INVALID;
         float latitude;
         float longitude;
         time_t unixTime;
         
         bool valid() const { return city[0] != '\0'; }
-        bool validOffset() const { return tzOffset != TX_OFFSET_INVALID; }
+        bool validOffset() const { return tzOffset != TZ_OFFSET_INVALID; }
 
         size_t printTo(Print &p) const 
         {
@@ -69,7 +70,16 @@ namespace GeoLocationAsync {
             bool waitingResponse = false;
             bool hasPreciseLocation = false;
             const unsigned long RETRY_PRECISE_INTERVAL = 30 MINUTES; // Интервал для повторных попыток точного определения
-        
+            void _configTime() const {
+                if ( targetData->tzOffset != TZ_OFFSET_INVALID ) {
+                    pointStop(0, "Set timezone offset=%d\n", targetData->tzOffset);
+                    configTime ( targetData->tzOffset *3600UL, 0, NTP_SERVERS);
+                } else if( strlen( targetData->timeZone ) != 0 ) {
+                    pointStop(0, "Set timeZone='%s'\n", targetData->timeZone);
+                    configTime(  targetData->timeZone, NTP_SERVERS );
+                }
+            }
+
             void parseIpGeoResponse(const String& response) {
                 JsonDocument doc;
                 if (deserializeJson(doc, response)) {
@@ -82,16 +92,23 @@ namespace GeoLocationAsync {
                 strlcpy(targetData->countryCode, doc["country_code2"] | "", CountryCodeSize);
                 strlcpy(targetData->timeZone, doc["time_zone"]["name"] | "", TZSize);
                 
-                targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TX_OFFSET_INVALID;
+                targetData->tzOffset = doc["time_zone"]["offset_with_dst"] | TZ_OFFSET_INVALID;
                 targetData->latitude = doc["latitude"].as<float>(); // | 0.0;
                 targetData->longitude = doc["longitude"].as<float>(); // | 0.0;
                 
+                _configTime();
+                // if( strlen( targetData->timeZone ) != 0 ) configTime(  targetData->timeZone, NTP_SERVERS );
+                // else if ( targetData->tzOffset != TZ_OFFSET_INVALID ) configTime ( targetData->tzOffset *3600UL, 0, NTP_SERVERS);
+
+
                 float unixTime = doc["time_zone"]["current_time_unix"].as<float>(); // | 0.0;
-                if (!TimeUtils::isSynced() && unixTime != 0.0) {
-                    targetData->unixTime = static_cast<time_t>(unixTime);
+                if (!TimeUtils::isSynced() && unixTime != 0.0) {    
+                                  
+                    targetData->unixTime = (time_t)unixTime;
+                    pointStop(0, "Set time: %lld\n", targetData->unixTime ); 
                     TimeUtils::setGMTTime(targetData->unixTime);
                 }
-        
+
                 hasPreciseLocation = true;
                 aproximateLocationAsync = false;
                 requestInProgress = false;
@@ -118,7 +135,17 @@ namespace GeoLocationAsync {
                 
                pointStop(0,"Got approximate location from Cloudflare\n");
             }
-        
+
+            // static void onHeaders(int code, const String& headers ){
+            //     //pointStop(0, "Headers: %s\n", headers.c_str() );
+            //     auto httpDate = httpsClient.getDate();//getServerResponseTime();
+            //     TimeUtils::setGMTTime(httpDate.c_str() );
+            //     pointStop(0, "Set time %s\n", httpDate.c_str() );
+            //     //time(nullptr);
+
+            // }
+
+
             void sendIpGeoRequest() {
                 char url[150];
                 strcpy(url, "https://api.ipgeolocation.io/ipgeo?apiKey=");
@@ -132,6 +159,11 @@ namespace GeoLocationAsync {
                     [this]() {
                         if (httpsClient.getStatusCode() == 200) {
                             parseIpGeoResponse(httpsClient.getBody());
+                            if ( ! TimeUtils::isSynced() ){
+                                auto httpDate = httpsClient.getServerResponseTime();
+                                if ( TimeUtils::isSynced( httpDate ))
+                                    TimeUtils::setGMTTime( httpDate);
+                            }
                         } else {
                             pointStop(0,"IPGeo request failed, trying Cloudflare...\n");
                             sendCloudflareRequest();
@@ -147,7 +179,8 @@ namespace GeoLocationAsync {
                 requestInProgress = true;
                 waitingResponse = true;
             }
-        
+
+
             void sendCloudflareRequest() {
                 pointStop(0,"Sending Cloudflare request\n");
                 
@@ -157,14 +190,21 @@ namespace GeoLocationAsync {
                     [this]() {
                         if (httpsClient.getStatusCode() == 200) {
                             parseCloudflareResponse(httpsClient.getBody());
+                            if ( ! TimeUtils::isSynced() ){
+                                auto httpDate = httpsClient.getServerResponseTime();
+                                if ( TimeUtils::isSynced( httpDate ))
+                                    TimeUtils::setGMTTime( httpDate);
+                            }
                         } else {
                             pointStop(0,"Cloudflare request failed\n");
                             requestInProgress = false;
+                            waitingResponse = false;
                         }
                     },
                     [this](const String& error) {
                         pointStop(0,"Cloudflare request error: %s\n", error.c_str());
                         requestInProgress = false;
+                        waitingResponse = false;
                     }
                 );
                 
@@ -177,6 +217,7 @@ namespace GeoLocationAsync {
             void begin(GeoData* data, const char* key) {
                 targetData = data;
                 geoKey = key;
+
                 // httpsClient.setInsecureMode(true);
                 // httpsClient.setTimeout(15000);
             }
@@ -189,9 +230,9 @@ namespace GeoLocationAsync {
                 if (WiFi.status() != WL_CONNECTED) {
                     return RequestGeoAsync::NoConnection;
                 }
-        
-                httpsClient.update();
-        
+                // перенёс в конец
+                //httpsClient.update();
+
                 // Первый запрос при инициализации
                 if (!requestInProgress && !waitingResponse && lastRequestTime == 0) {
                     
@@ -202,7 +243,8 @@ namespace GeoLocationAsync {
                     }
                     return RequestGeoAsync::Pending;
                 }
-        
+
+                
                 // Периодическая проверка для точного определения (если есть ключ)
                 if (!requestInProgress && !waitingResponse && geoKey != nullptr && 
                     aproximateLocationAsync && 
@@ -210,7 +252,8 @@ namespace GeoLocationAsync {
                     sendIpGeoRequest();
                     return RequestGeoAsync::Pending;
                 }
-        
+
+                httpsClient.update();
                 if (waitingResponse) {
                     return RequestGeoAsync::Pending;
                 }
@@ -242,12 +285,39 @@ namespace GeoLocationAsync {
         return geoRequester.update();
     }
 
+    void handleTick(){
+        static bool wifiIsOn= false;
+
+        switch (geoRequester.update())
+        {
+        case RequestGeoAsync::OK:
+        case RequestGeoAsync::Pending:
+            break;
+        case RequestGeoAsync::NoConnection:
+            wifiIsOn = true;
+            Reconnect::connect();
+            break;        
+        // case RequestGeoAsync::Pending:
+            
+        //     break;
+        // case RequestGeoAsync::NoData:
+        // case RequestGeoAsync::NewData:
+
+        //    break;
+        default:
+            if ( wifiIsOn ){
+                if ( wiFiSleep() ) wifiIsOn = false;
+            }
+            break;
+        }
+    }
 
     RequestGeoAsync::Error waitLocationReceived(GeoData &data, Adafruit_PCD8544 * display = nullptr)
     {        
         printDots(display);
-        geoRequester.begin(&myLocation, eepromSets.getGeoKey());
         RequestGeoAsync::Error _lastStatus;
+        geoRequester.begin(&myLocation, eepromSets.getGeoKey());
+        
         while (true) {
             
             auto status = geoRequester.update();
@@ -282,7 +352,8 @@ namespace GeoLocationAsync {
                         pointStop(0,"No location data yet\n");
                         _lastStatus = status;
                     }
-                    break;
+                    return status;
+                    //break;
                 default:
                     geoRequester.reset();
                     status = RequestGeoAsync::Error::NoConnection;

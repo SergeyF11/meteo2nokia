@@ -8,6 +8,8 @@
 #include <ESP8266WiFi.h>
 #include <ArduinoOTA.h>
 
+//#define TEST_CHARS
+
 #define PRINT_COLOR BLACK
 #define CONTRAST1 55
 #define CONTRAST2 60
@@ -21,6 +23,7 @@ tm* nowTm;
 #define SECONDS *1000
 #define MINUTES *60 SECONDS
 #define HOURS *60 MINUTES
+
 #include "utils/weather_async.h" 
 #include "utils/wifi_utils.h"
 //#include "utils/geo_utils.h"
@@ -30,6 +33,11 @@ tm* nowTm;
 #include "utils/time_utils.h"
 //#include "utils/tz_utils.h"
 #include "utils/button_utils.h"
+
+//#define USE_WEATHER_SERVER_TIME
+#define FIRST_HTTPS_WAIT_MS 15000UL //30000UL
+// #define MIN_HTTPS_WAIT_MS   1500UL //10000UL
+// #define STEP_HTTPS_MS       500 
 
 AsyncHttpsClient httpsClient;
 // Глобальные переменные для хранения настроек в eeprom и в программе
@@ -58,7 +66,7 @@ struct SimpleTicker htuSensorTick( 60 SECONDS );
 Adafruit_PCD8544 display2 = Adafruit_PCD8544(14, 13, 0, 12, 16); // CLK, DIN, DC, SCE, RST (экран 1)
 //                                           D5, D7, D4,D8, D0      
 Adafruit_PCD8544 display1 = Adafruit_PCD8544(14, 13, 0, 15, 16); // CLK, DIN, DC, SCE, RST (экран 2)
-//                                            D5, D7,D3,D6, D0
+//Adafruit_PCD8544 display1 = Adafruit_PCD8544( D5, D7, D3, D8, D0 );
 
 
 // Переменные для хранения данных о погоде
@@ -70,9 +78,12 @@ float weatherHumidity = 0;
 //bool tripleReset;
 
 void setup() {
-
+  sntp_stop();
   httpsClient.setInsecureMode(true);
-  httpsClient.setTimeout(15000);
+  httpsClient.setTimeout(FIRST_HTTPS_WAIT_MS);
+
+  httpsClient.setBufferSizes(1024, 512); 
+
 
   // Инициализация Serial для отладки
   Serial.begin(115200);
@@ -81,6 +92,7 @@ void setup() {
   isSettingsValid = eepromSets.load();
   configTime( 0,0, NTP_SERVERS);
   
+
   // Инициализация экранов
   displays::init();
     if ( tripleReset.isTriggered() ){
@@ -91,11 +103,6 @@ void setup() {
     }
     Serial.println("\n\nTriple reset detected!!!\n\n");   
   }
-
-  // TestChars::setDelay(1000);
-  // TestChars::run(display1, 2);
-  // BigSign::test(display1);
-  // pointStop(10000,"Test done\n");
 
 
 
@@ -138,7 +145,12 @@ void setup() {
   displays::setContrast(eepromSets.getContrast1(), eepromSets.getContrast2(), &Serial);
   CaptivePortal::init(eepromSets);
 
-
+#ifdef TEST_CHARS
+  TestChars::setDelay(1000);
+  TestChars::run(display1, 2);
+  BigSign::test(display1);
+  pointStop(10000,"Test done\n");
+#endif
   //GeoLocationAsync::test();
 
   
@@ -153,7 +165,7 @@ void setup() {
       case RequestGeoAsync::OK:
         validLocation = true;
         display1.clearDisplay();
-        display1.display();
+        //display1.display();
         if ( aproximateLocationAsync ) display1.print('~');
         display1.print(GeoLocationAsync::myLocation.city);
         break;
@@ -170,7 +182,7 @@ void setup() {
   // }
 
   weatherTick.reset( -weatherUpdateInterval );
-  httpsClient.setTimeout(3000);
+  //httpsClient.setTimeout(10000);
 }
 
 
@@ -178,15 +190,7 @@ void loop() {
   // вариант DS
   Weather::handleTick();  
   Weather::updateDataDS(display1);
-  // if ( weatherTick.tick() ){
-  //   if ( Reconnect::connect() ) {
-  //     //Weather::waitConnection = true;
-  //     Weather::updateState = AsyncRequest::WaitWiFiConnection;
-  //   } else {
-  //     weatherTick.reset( Weather::wrongUpdateInterval( 5 SECONDS ) );
-  //   }
-  // }
-  //Weather::updateDataMy(display1);
+  GeoLocationAsync::handleTick();
   
 
   

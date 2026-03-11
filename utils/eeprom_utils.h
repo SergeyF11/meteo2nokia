@@ -28,7 +28,7 @@ private:
   bool validKey(const char *key) const { return strlen(key) == API_KEY_SIZE; };
 
 public:
-  constexpr size_t size = sizeof(EepromData);
+  // constexpr size_t size = sizeof(EepromData);
 
   size_t printTo(Print &p)
   {
@@ -195,7 +195,7 @@ bool saveApiKeys(const char *apiKey, const char *geoKey = nullptr, const int eep
   EepromData currentData;
   if (!loadEepromData(currentData, eepromStart))
   {
-    currentData = EepromData("", "");
+    currentData = EepromData("");
   }
   EepromData eepromData(apiKey, geoKey, currentData.getContrast1(), currentData.getContrast2());
   return saveEepromData(eepromData);
@@ -207,7 +207,7 @@ bool saveContrastSettings(uint8_t c1, uint8_t c2, const int eepromStart = 0)
   EepromData currentData;
   if (!loadEepromData(currentData, eepromStart))
   {
-    currentData = EepromData("", "");
+    currentData = EepromData("");
   }
   currentData.setContrast(c1, c2);
   return saveEepromData(currentData, eepromStart);
@@ -295,20 +295,7 @@ bool loadEepromData(EepromData &data, const int eepromStart)
 //     return out;
 //    };
 //    EepromData(){
-//     _crc = 123456789;
-//   };
-//   EepromData(const char * weatherKey, const char * geoKey=nullptr) {
-//     auto len = min( strlen(weatherKey), API_KEY_SIZE);
-//     strncpy(this->openWeatherApi, weatherKey, len);
-//     if ( geoKey ) {
-//       len = min( strlen(geoKey), API_KEY_SIZE);
-//       strncpy(this->geolocationApi, geoKey, len);
-//     }
-//    _crc = crc();
-//   };
-//   const char * getWeatherKey() const {
-//     if ( crc() != this->_crc ) nullptr;
-//     return openWeatherApi;
+//     _crc = 123456789;512
 //   };
 //   const char * getGeoKey() const {
 //     if ( crc() != this->_crc ) nullptr;

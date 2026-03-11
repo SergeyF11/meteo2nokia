@@ -25,19 +25,45 @@ Adafruit_HTU21DF htu = Adafruit_HTU21DF();
 extern tm* nowTm;
 
 namespace I2C_Scan {
+  bool _checkAddr( byte addr){
+    Wire.beginTransmission(addr);
+    return (Wire.endTransmission() == 0);
+  };
+  byte _findAddr(byte startFrom = 0){
+    byte found = 0;
+    do {
+      startFrom++;
+      if ( _checkAddr(startFrom) ) {
+        found = startFrom;
+        break; 
+      }
+    } while( startFrom < 127 );
+    return found;
+  };
+
   size_t printTo(Print& p)
   {
     size_t size = 0;
-    size += p.println("Scan I2c");
+    size += p.println("Scan I2C");
     int count = 0;
-    for ( byte i=1; i<127; i++){
-      Wire.beginTransmission(i);
-      if (Wire.endTransmission() == 0) { 
-        size += p.print("Found I2C device on 0x");
-        size += p.println(i, HEX);
-        count++;
-      }
-    }
+    byte addr = 0;
+    do { 
+      addr = _findAddr(addr);
+      if ( addr == 0 ) break;
+
+      size += p.print("Found I2C device on 0x");
+      size += p.println(addr, HEX);
+      count++;
+    } while( addr );
+    // for ( byte i=1; i<127; i++){
+    //   // Wire.beginTransmission(i);
+    //   // if (Wire.endTransmission() == 0) { 
+    //   if ( _checkAddr(i)){
+    //     size += p.print("Found I2C device on 0x");
+    //     size += p.println(i, HEX);
+    //     count++;
+    //   }
+    // }
     size += p.printf("Found %d devices\n", count );
     return size;
   };

@@ -1,25 +1,24 @@
 #pragma once
 #include <Arduino.h>
 #include <TimeLib.h>
+#include <sys/time.h> // для settimeofday
 
 extern tm* nowTm;
 
 namespace  TimeUtils {
-
-    time_t fromHttpHeader(const char * dateHeader = nullptr){
-
-        static unsigned long responseReceivedTime = 0; // Статическая переменная для фиксации момента получения HTTP-ответа
+    static unsigned long httpRequestStartMs = 0; // Статическая переменная для фиксации момента получения HTTP-ответа
+    
+    time_t fromHttpHeader(const char * dateHeader = nullptr){  
         static time_t httpTime = 0;
-
         auto receivedTime=millis();
 
-        unsigned long secondsFromResponse = ( receivedTime-responseReceivedTime) / 1000;
+        unsigned long secondsFromResponse = ( receivedTime + 500 -httpRequestStartMs) / 1000;
         time_t expectedNow = httpTime + secondsFromResponse;
                
         //else
         struct tm tm;        
         if (dateHeader && strptime(dateHeader, "%a, %d %b %Y %H:%M:%S GMT", &tm)) {
-            responseReceivedTime = receivedTime;
+            //httpRequestStartMs = receivedTime;
             httpTime = mktime(&tm);
             time_t now = time(nullptr);
             return now;
@@ -29,7 +28,7 @@ namespace  TimeUtils {
     };
 
 
-    constexpr long likeSync = 3600*2*60;
+    constexpr long likeSync = 1000000000;
     bool inline _isSynced(){
         return time(nullptr) > likeSync;
     };
@@ -46,13 +45,21 @@ namespace  TimeUtils {
         return _isSynced() && isSynced(t);
     };
     
-    void inline  setGMTTime(time_t now){
-        setTime(now);
+    void inline  setGMTTime(time_t t){
+        struct timeval tv;
+        tv.tv_sec = t;
+        tv.tv_usec = 0;
+        settimeofday(&tv, nullptr);
+        Serial.printf("System time set to: %s", ctime(&t));
     };
+
     void inline setGMTTime(const char * str){
-        time_t now = fromHttpHeader(str);
-        if ( isSynced( now ))
-            setGMTTime(now);
+        Serial.printf("Date str: %s\n", str);
+
+        time_t t = fromHttpHeader(str);
+        Serial.printf("Parsed as: %lld\n", t);
+        if ( isSynced( t ))
+            setGMTTime(t);
     };
 
     const char * toStr(char * buf, const tm * _tm, const char separator=':', bool spaceBeforeHour=false){
